@@ -32,6 +32,17 @@ class Game {
     this.lastAmmoRegenTime = 0;
     this.isGameOver = false;
 
+    // Jetpack / Jump state
+    this.jetpackFuel = CONFIG.player.jetpackFuelCapacity;
+    this.maxJetpackFuel = CONFIG.player.jetpackFuelCapacity;
+    this.isGrounded = true;
+    this.canDoubleJump = false;
+    this.hasDoubleJumped = false;
+
+    // Stamina state
+    this.stamina = CONFIG.player.staminaCapacity;
+    this.maxStamina = CONFIG.player.staminaCapacity;
+
     // Projectile tracking lists
     this.projectiles = [];
     this.npcProjectiles = [];
@@ -64,6 +75,11 @@ class Game {
     this.restartBtn = document.getElementById('restart-btn');
     this.crosshairRing = document.querySelector('.crosshair-ring');
 
+    this.jetpackBar = document.getElementById('jetpack-bar');
+    this.jetpackText = document.getElementById('jetpack-text');
+    this.staminaBar = document.getElementById('stamina-bar');
+    this.staminaText = document.getElementById('stamina-text');
+
     // Register global instance for NPCs to hook into
     window.gameInstance = this;
 
@@ -73,8 +89,8 @@ class Game {
   init() {
     // 1. Setup Three.js Scene, Camera, and Renderer
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x05070a);
-    this.scene.fog = new THREE.FogExp2(0x05070a, 0.015);
+    this.scene.background = new THREE.Color(0x0a0a12);
+    this.scene.fog = new THREE.FogExp2(0x0a0a12, 0.015);
 
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
@@ -85,10 +101,10 @@ class Game {
     document.getElementById('canvas-container').appendChild(this.renderer.domElement);
 
     // 2. Setup Lighting
-    const ambientLight = new THREE.AmbientLight(0x111b24, 1.2);
+    const ambientLight = new THREE.AmbientLight(0x0c0f1d, 0.15);
     this.scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xfff0dd, 0.8);
+    const dirLight = new THREE.DirectionalLight(0xfff0dd, 0.4);
     dirLight.position.set(20, 40, 20);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 1024;
@@ -102,17 +118,23 @@ class Game {
     dirLight.shadow.camera.bottom = -d;
     this.scene.add(dirLight);
 
+    // Setup localized neon point lights
+    this.setupNeonLights();
+
+    // Setup drifting kitchen steam particles
+    this.setupSteamParticles();
+
     // Cyberpunk Grid floor
     const gridHelper = new THREE.GridHelper(100, 50, 0x00e5ff, 0x112233);
-    gridHelper.position.y = -5;
+    gridHelper.position.y = CONFIG.world.GROUND_Y + 0.02; // Slight offset to prevent z-fighting
     this.scene.add(gridHelper);
 
     // 3. Setup Physics World
     this.physicsWorld = new PhysicsWorld();
 
-    // 4. Create Player Physics Body
-    // Positioned at (0, 2, 0)
-    this.playerBody = this.physicsWorld.createPlayerBody({ x: 0, y: 2, z: 0 }, 0.85);
+    // 4. Create Player Physics Body — spawn at ground level
+    const playerSpawnY = CONFIG.world.GROUND_Y + CONFIG.player.collisionRadius;
+    this.playerBody = this.physicsWorld.createPlayerBody({ x: 0, y: playerSpawnY, z: 0 }, CONFIG.player.collisionRadius);
 
     // 5. Setup Camera Yaw/Pitch Control Rig
     this.yawObject = new THREE.Group();
@@ -200,72 +222,72 @@ class Game {
   }
 
   generateEnvironment() {
-    // Floor physics box to stop falling completely
-    this.physicsWorld.createStaticBox({ x: 0, y: -5.5, z: 0 }, { x: 120, y: 1, z: 120 });
+    // 1. Massive Stainless Steel Counter Deck
+    const deckThickness = 2;
+    const deckCenterY = CONFIG.world.GROUND_Y - deckThickness / 2;
+    const deckGeo = new THREE.BoxGeometry(120, deckThickness, 120);
+    const deckMat = new THREE.MeshStandardMaterial({
+      color: 0x8e9bb0,
+      metalness: 0.9,
+      roughness: 0.15
+    });
+    const deckMesh = new THREE.Mesh(deckGeo, deckMat);
+    deckMesh.position.set(0, deckCenterY, 0);
+    deckMesh.receiveShadow = true;
+    deckMesh.castShadow = true;
+    this.scene.add(deckMesh);
 
-    // Generate floating counters and giant pantry shelves
+    // Corresponding Cannon-es static deck body
+    this.physicsWorld.createStaticBox({ x: 0, y: deckCenterY, z: 0 }, { x: 120, y: deckThickness, z: 120 });
+
+    // Track dynamic environment meshes/bodies for runtime toggles
+    this.envMeshes = [];
+    this.envBodies = [];
+
+    // 2. Load obstacles from config if enabled
+    if (CONFIG.environment.loadObstacles) {
+      this.spawnConfiguredObstacles();
+    }
+
+    // 3. Programmatic loop helper for floating/grounded cover
+    this.scatterObstacles();
+  }
+
+  spawnConfiguredObstacles() {
+    this.clearConfiguredObstacles();
+
+    const boxMaterial = new THREE.MeshStandardMaterial({
+      color: 0x9a3412,
+      roughness: 0.8
+    });
+    const sodaMaterial = new THREE.MeshStandardMaterial({
+      color: 0x0369a1,
+      roughness: 0.3,
+      metalness: 0.8
+    });
     const shelfMaterial = new THREE.MeshStandardMaterial({
       color: 0x1e293b,
       roughness: 0.6,
       metalness: 0.2
     });
 
-    const boxMaterial = new THREE.MeshStandardMaterial({
-      color: 0x9a3412, // orange/brown giant cereal box
-      roughness: 0.8
-    });
+    CONFIG.environment.structures.forEach(item => {
+      const body = this.physicsWorld.createStaticBox(item.pos, item.size);
+      this.envBodies.push(body);
 
-    const sodaMaterial = new THREE.MeshStandardMaterial({
-      color: 0x0369a1, // blue soda can
-      roughness: 0.3,
-      metalness: 0.8
-    });
-
-    // Preset positions for floating objects
-    const structures = [
-      // Floor counter left
-      { pos: { x: -12, y: -3.5, z: -10 }, size: { x: 10, y: 3, z: 20 } },
-      // Floor counter right
-      { pos: { x: 12, y: -3.5, z: 10 }, size: { x: 10, y: 3, z: 20 } },
-      
-      // Floating shelf center high
-      { pos: { x: 0, y: 4, z: -18 }, size: { x: 22, y: 0.6, z: 6 } },
-      // Floating shelf left medium
-      { pos: { x: -18, y: 1, z: 4 }, size: { x: 6, y: 0.6, z: 22 } },
-      // Floating shelf right medium
-      { pos: { x: 18, y: 1, z: -4 }, size: { x: 6, y: 0.6, z: 22 } },
-
-      // Giant floating cereal boxes
-      { pos: { x: -8, y: 7, z: -16 }, size: { x: 2.2, y: 3.5, z: 1.2 }, type: 'cereal' },
-      { pos: { x: 8, y: 8, z: -19 }, size: { x: 2.2, y: 3.5, z: 1.2 }, type: 'cereal' },
-      
-      // Giant floating Soda Cans (represented as boxes here for simpler collider, cylinders visually)
-      { pos: { x: -18, y: 4, z: 6 }, size: { x: 1.8, y: 3.0, z: 1.8 }, type: 'soda' },
-      { pos: { x: 18, y: 4, z: -6 }, size: { x: 1.8, y: 3.0, z: 1.8 }, type: 'soda' }
-    ];
-
-    structures.forEach(item => {
-      // 1. Create Physics Body
-      this.physicsWorld.createStaticBox(item.pos, item.size);
-
-      // 2. Create Three.js Visual Mesh
       let mesh;
       if (item.type === 'cereal') {
         const geo = new THREE.BoxGeometry(item.size.x, item.size.y, item.size.z);
         mesh = new THREE.Mesh(geo, boxMaterial);
-        
-        // Add a yellow tag/label to the cereal box
         const labelGeo = new THREE.BoxGeometry(item.size.x + 0.02, 1.2, item.size.z + 0.02);
         const labelMat = new THREE.MeshBasicMaterial({ color: 0xeab308 });
         const label = new THREE.Mesh(labelGeo, labelMat);
         label.position.y = 0.4;
         mesh.add(label);
       } else if (item.type === 'soda') {
-        // Render cylinder for soda cans
         const geo = new THREE.CylinderGeometry(item.size.x / 2, item.size.x / 2, item.size.y, 10);
         mesh = new THREE.Mesh(geo, sodaMaterial);
       } else {
-        // Standard grey metallic shelves/counters
         const geo = new THREE.BoxGeometry(item.size.x, item.size.y, item.size.z);
         mesh = new THREE.Mesh(geo, shelfMaterial);
       }
@@ -274,26 +296,183 @@ class Game {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       this.scene.add(mesh);
+      this.envMeshes.push(mesh);
     });
+  }
+
+  clearConfiguredObstacles() {
+    this.envMeshes.forEach(mesh => {
+      this.scene.remove(mesh);
+      mesh.geometry.dispose();
+      if (Array.isArray(mesh.material)) {
+        mesh.material.forEach(m => m.dispose());
+      } else {
+        mesh.material.dispose();
+      }
+    });
+    this.envMeshes = [];
+
+    this.envBodies.forEach(body => {
+      this.physicsWorld.removeBody(body);
+    });
+    this.envBodies = [];
+  }
+
+  scatterObstacles() {
+    this.scatterMeshes = [];
+    this.scatterBodies = [];
+
+    const cerealMat = new THREE.MeshStandardMaterial({
+      color: 0x1f2937,
+      roughness: 0.5,
+      metalness: 0.1,
+      emissive: 0xff0055,
+      emissiveIntensity: 0.15
+    });
+
+    const sodaMat = new THREE.MeshStandardMaterial({
+      color: 0x111827,
+      roughness: 0.2,
+      metalness: 0.9,
+      emissive: 0x00e5ff,
+      emissiveIntensity: 0.1
+    });
+
+    // Scatter 6 cereal boxes and 6 soda cans at ground level
+    for (let i = 0; i < 6; i++) {
+      const size = { x: 2.2, y: 4.5, z: 1.5 };
+      const pos = {
+        x: (Math.random() - 0.5) * 60,
+        y: CONFIG.world.GROUND_Y + size.y / 2,
+        z: (Math.random() - 0.5) * 60
+      };
+      
+      if (Math.abs(pos.x) < 8 && Math.abs(pos.z) < 8) {
+        pos.x += 12;
+      }
+
+      const body = this.physicsWorld.createStaticBox(pos, size);
+      this.scatterBodies.push(body);
+
+      const geo = new THREE.BoxGeometry(size.x, size.y, size.z);
+      const mesh = new THREE.Mesh(geo, cerealMat);
+      mesh.position.copy(pos);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+
+      const edges = new THREE.EdgesGeometry(geo);
+      const lineMat = new THREE.LineBasicMaterial({ color: 0xff0055, linewidth: 2 });
+      const wireframe = new THREE.LineSegments(edges, lineMat);
+      mesh.add(wireframe);
+
+      this.scene.add(mesh);
+      this.scatterMeshes.push(mesh);
+    }
+
+    for (let i = 0; i < 6; i++) {
+      const size = { x: 1.6, y: 3.2, z: 1.6 };
+      const pos = {
+        x: (Math.random() - 0.5) * 60,
+        y: CONFIG.world.GROUND_Y + size.y / 2,
+        z: (Math.random() - 0.5) * 60
+      };
+
+      if (Math.abs(pos.x) < 8 && Math.abs(pos.z) < 8) {
+        pos.z += 12;
+      }
+
+      const body = this.physicsWorld.createStaticBox(pos, size);
+      this.scatterBodies.push(body);
+
+      const geo = new THREE.CylinderGeometry(size.x / 2, size.x / 2, size.y, 8);
+      const mesh = new THREE.Mesh(geo, sodaMat);
+      mesh.position.copy(pos);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+
+      const edges = new THREE.EdgesGeometry(geo);
+      const lineMat = new THREE.LineBasicMaterial({ color: 0x00e5ff, linewidth: 2 });
+      const wireframe = new THREE.LineSegments(edges, lineMat);
+      mesh.add(wireframe);
+
+      this.scene.add(mesh);
+      this.scatterMeshes.push(mesh);
+    }
+  }
+
+  setupNeonLights() {
+    this.neonLights = [];
+
+    // Red/Magenta, Cyan, and Orange PointLights
+    const lightConfigs = [
+      { color: 0xff0055, pos: { x: -10, y: 4, z: -10 }, intensity: 10 },
+      { color: 0x00e5ff, pos: { x: 10, y: 4, z: 10 }, intensity: 10 },
+      { color: 0xff5e00, pos: { x: -18, y: 6, z: 8 }, intensity: 10 },
+      { color: 0xff0055, pos: { x: 18, y: 6, z: -8 }, intensity: 10 },
+      { color: 0x00e5ff, pos: { x: 0, y: 6, z: -18 }, intensity: 10 }
+    ];
+
+    lightConfigs.forEach(config => {
+      const light = new THREE.PointLight(config.color, config.intensity, 25);
+      light.position.set(config.pos.x, config.pos.y, config.pos.z);
+      light.castShadow = true;
+      light.shadow.bias = -0.002;
+      this.scene.add(light);
+      this.neonLights.push(light);
+
+      // Add a small visual sphere to represent the light bulb/source
+      const sphereGeo = new THREE.SphereGeometry(0.2, 8, 8);
+      const sphereMat = new THREE.MeshBasicMaterial({ color: config.color });
+      const bulb = new THREE.Mesh(sphereGeo, sphereMat);
+      bulb.position.copy(light.position);
+      this.scene.add(bulb);
+    });
+  }
+
+  setupSteamParticles() {
+    const particleCount = 500;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+
+    for (let i = 0; i < particleCount * 3; i += 3) {
+      positions[i] = (Math.random() - 0.5) * 120;     // X: across the play counter
+      positions[i + 1] = Math.random() * 25 - 5;       // Y: from -5 to 20m height
+      positions[i + 2] = (Math.random() - 0.5) * 120;   // Z
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+    const material = new THREE.PointsMaterial({
+      color: 0x00e5ff,
+      size: 0.15,
+      transparent: true,
+      opacity: 0.4,
+      blending: THREE.AdditiveBlending
+    });
+
+    this.steamParticles = new THREE.Points(geometry, material);
+    this.scene.add(this.steamParticles);
   }
 
   spawnEnemies() {
     this.npcEngine.clearAll();
     if (!CONFIG.npc.spawnEnabled) return;
 
-    // Spawn Broccoli Boys (Green Faction)
+    // Derive NPC spawn heights from CONFIG.world.GROUND_Y
+    const broccoliY = CONFIG.world.GROUND_Y + 0.85; // sphere radius
+    const carrotY = CONFIG.world.GROUND_Y + 1.25;   // half cylinder height
+
     const broccoliSpawns = [
-      { x: -10, y: 3, z: -10 },
-      { x: 10, y: 3, z: 10 },
-      { x: -18, y: 6, z: 8 },
-      { x: 18, y: 6, z: -8 }
+      { x: -10, y: broccoliY, z: -10 },
+      { x: 10, y: broccoliY, z: 10 },
+      { x: -18, y: broccoliY, z: 8 },
+      { x: 18, y: broccoliY, z: -8 }
     ];
 
-    // Spawn Carrot Cartel (Orange Faction)
     const carrotSpawns = [
-      { x: 0, y: 6, z: -18 },
-      { x: -12, y: 1, z: 12 },
-      { x: 12, y: 1, z: -12 }
+      { x: 0, y: carrotY, z: -18 },
+      { x: -12, y: carrotY, z: 12 },
+      { x: 12, y: carrotY, z: -12 }
     ];
 
     broccoliSpawns.forEach(pos => {
@@ -305,14 +484,26 @@ class Game {
     });
   }
 
+  // Returns a spawn position at ground level, offset in front of the player's current look direction.
+  getSpawnInFrontOfPlayer(entityHalfHeight) {
+    const yawAngle = this.yawObject.rotation.y;
+    const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), yawAngle).normalize();
+    const spawnDist = 6;
+    return {
+      x: this.yawObject.position.x + forward.x * spawnDist,
+      y: CONFIG.world.GROUND_Y + entityHalfHeight,
+      z: this.yawObject.position.z + forward.z * spawnDist
+    };
+  }
+
   setupControls() {
-    // Click blocker to request pointer lock
+    // Click blocker to request pointer lock on document.body for cross-browser reliability
     this.blocker.addEventListener('click', () => {
-      this.blocker.requestPointerLock();
+      document.body.requestPointerLock();
     });
 
     document.addEventListener('pointerlockchange', () => {
-      if (document.pointerLockElement === this.blocker) {
+      if (document.pointerLockElement === document.body) {
         this.isLocked = true;
         this.blocker.classList.add('hidden');
         this.hud.classList.remove('hidden');
@@ -341,7 +532,22 @@ class Game {
         case 'ArrowRight':
           this.keys.d = true; break;
         case 'Space':
-          this.keys.space = true; break;
+          if (!this.keys.space) {
+            if (this.isGrounded) {
+              // Apply jump impulse
+              this.playerBody.applyImpulse(new CANNON.Vec3(0, CONFIG.player.jumpImpulse, 0), this.playerBody.position);
+              this.isGrounded = false;
+              this.canDoubleJump = true;
+              this.hasDoubleJumped = false;
+            } else if (this.canDoubleJump) {
+              // Double jump -> Activate Jetpack
+              this.hasDoubleJumped = true;
+              this.canDoubleJump = false;
+              this.jumpStartHeight = this.playerBody.position.y;
+            }
+          }
+          this.keys.space = true;
+          break;
         case 'ShiftLeft':
         case 'ShiftRight':
           this.keys.shift = true; break;
@@ -436,9 +642,11 @@ class Game {
     const playerFolder = this.gui.addFolder('Player & Weapon');
     playerFolder.add(CONFIG.player, 'godMode').name('God Mode');
     playerFolder.add(CONFIG.player, 'infiniteAmmo').name('Infinite Ammo');
-    playerFolder.add(CONFIG.player, 'thrustStrength', 100, 1500, 50).name('Horizontal Thrust');
-    playerFolder.add(CONFIG.player, 'upThrustStrength', 100, 2000, 50).name('Upward Thrust');
-    playerFolder.add(CONFIG.player, 'downThrustStrength', 100, 1500, 50).name('Downward Thrust');
+    playerFolder.add(CONFIG.player, 'walkThrust', 100, 1500, 50).name('Walk Thrust');
+    playerFolder.add(CONFIG.player, 'runThrust', 200, 2500, 50).name('Run Thrust');
+    playerFolder.add(CONFIG.player, 'jetpackThrust', 200, 2000, 50).name('Jetpack Thrust');
+    playerFolder.add(CONFIG.player, 'jumpImpulse', 50, 1000, 10).name('Jump Impulse');
+    playerFolder.add(CONFIG.player, 'maxBoostHeight', 2, 30, 0.5).name('Max Boost Height');
     playerFolder.add(CONFIG.weapon, 'ammoRegenInterval', 0.1, 3.0, 0.1).name('Ammo Regen Delay');
     playerFolder.add(CONFIG.weapon, 'projectileSpeed', 10, 100, 1).name('Spud Bullet Speed');
     playerFolder.add(CONFIG.weapon, 'projectileDamage', 5, 100, 5).name('Spud Damage');
@@ -455,6 +663,16 @@ class Game {
     npcFolder.add(CONFIG.npc, 'aiFrozen').name('Freeze AI');
     npcFolder.add(CONFIG.npc, 'projectileSpeed', 5, 50, 0.5).name('Veggies Bullet Speed');
     npcFolder.add(CONFIG.npc, 'projectileDamage', 1, 100, 1).name('Veggies Damage');
+
+    // 5. Environment Folder
+    const envFolder = this.gui.addFolder('Environment');
+    envFolder.add(CONFIG.environment, 'loadObstacles').name('Load Configured Obstacles').onChange((value) => {
+      if (value) {
+        this.spawnConfiguredObstacles();
+      } else {
+        this.clearConfiguredObstacles();
+      }
+    });
   }
 
   fireProjectile() {
@@ -651,6 +869,16 @@ class Game {
   updateHUD() {
     this.healthBar.style.width = `${this.health}%`;
     this.healthText.innerText = Math.round(this.health);
+
+    if (this.jetpackBar && this.jetpackText) {
+      this.jetpackBar.style.width = `${this.jetpackFuel}%`;
+      this.jetpackText.innerText = Math.round(this.jetpackFuel);
+    }
+    if (this.staminaBar && this.staminaText) {
+      this.staminaBar.style.width = `${this.stamina}%`;
+      this.staminaText.innerText = Math.round(this.stamina);
+    }
+
     this.scoreText.innerText = String(this.score).padStart(5, '0');
     this.killsText.innerText = this.kills;
   }
@@ -678,17 +906,24 @@ class Game {
   }
 
   resetGame() {
-    this.health = 100;
+    this.health = CONFIG.player.maxHealth;
     this.score = 0;
     this.kills = 0;
-    this.ammo = 10;
+    this.ammo = CONFIG.weapon.maxAmmo;
     this.isGameOver = false;
+
+    this.jetpackFuel = CONFIG.player.jetpackFuelCapacity;
+    this.stamina = CONFIG.player.staminaCapacity;
+    this.isGrounded = true;
+    this.canDoubleJump = false;
+    this.hasDoubleJumped = false;
 
     this.updateHUD();
     this.updateAmmoUI();
 
-    // Reposition player physical body and clear velocity
-    this.playerBody.position.set(0, 2, 0);
+    // Reposition player physical body and clear velocity (lifecycle transition — permitted)
+    const resetY = CONFIG.world.GROUND_Y + CONFIG.player.collisionRadius;
+    this.playerBody.position.set(0, resetY, 0);
     this.playerBody.velocity.set(0, 0, 0);
 
     // Clear active projectiles
@@ -709,7 +944,7 @@ class Game {
 
     // Re-lock cursor
     this.gameOverScreen.classList.add('hidden');
-    this.blocker.requestPointerLock();
+    document.body.requestPointerLock();
   }
 
   onWindowResize() {
@@ -806,6 +1041,20 @@ class Game {
       }
     }
 
+    // Update drifting kitchen steam particles
+    if (this.steamParticles) {
+      const positions = this.steamParticles.geometry.attributes.position.array;
+      for (let i = 1; i < positions.length; i += 3) {
+        // Drift upwards
+        positions[i] += 1.5 * deltaTime;
+        // Wrap around height boundary
+        if (positions[i] > 20) {
+          positions[i] = -5;
+        }
+      }
+      this.steamParticles.geometry.attributes.position.needsUpdate = true;
+    }
+
     // 9. Raycast check for target reticle color indicator
     if (this.isLocked && !this.isGameOver) {
       this.updateCrosshairReticle();
@@ -816,7 +1065,24 @@ class Game {
   }
 
   updatePlayerMovement(deltaTime) {
-    // 1. Calculate direction vector of player camera look yaw
+    // 1. Grounded status check
+    const grounded = this.physicsWorld.checkGrounded(this.playerBody);
+    
+    if (grounded) {
+      this.isGrounded = true;
+      this.hasDoubleJumped = false;
+      this.canDoubleJump = false;
+      // Recharge fuel when grounded
+      this.jetpackFuel = Math.min(this.maxJetpackFuel, this.jetpackFuel + CONFIG.player.jetpackRechargeRate * deltaTime);
+    } else {
+      // Transition from grounded to airborne (e.g., falling)
+      if (this.isGrounded) {
+        this.isGrounded = false;
+        this.canDoubleJump = true;
+      }
+    }
+
+    // 2. Calculate direction vector of player camera look yaw
     const yawAngle = this.yawObject.rotation.y;
     
     // Forward direction in horizontal plane (XZ)
@@ -830,10 +1096,37 @@ class Game {
     if (this.keys.a) moveDirection.sub(right);
     moveDirection.normalize();
 
-    // Apply drift velocity push in low gravity
-    const thrustStrength = CONFIG.player.thrustStrength;
-    if (moveDirection.lengthSq() > 0) {
-       const thrust = new CANNON.Vec3(
+    const isMoving = moveDirection.lengthSq() > 0;
+
+    // 3. Movement speed & stamina dynamics
+    let thrustStrength = 0;
+    if (this.isGrounded) {
+      if (isMoving) {
+        if (this.keys.shift && this.stamina > 0) {
+          // Running
+          thrustStrength = CONFIG.player.runThrust;
+          this.stamina = Math.max(0, this.stamina - CONFIG.player.staminaDrainRate * deltaTime);
+        } else {
+          // Walking
+          thrustStrength = CONFIG.player.walkThrust;
+          this.stamina = Math.min(this.maxStamina, this.stamina + CONFIG.player.staminaRechargeRate * deltaTime);
+        }
+        this.playerBody.linearDamping = 0.7; // Responsive movement damping
+      } else {
+        // Standing still -> recharge stamina
+        this.stamina = Math.min(this.maxStamina, this.stamina + CONFIG.player.staminaRechargeRate * deltaTime);
+        this.playerBody.linearDamping = 0.98; // High damping to prevent low-gravity sliding
+      }
+    } else {
+      // Airborne air control
+      thrustStrength = CONFIG.player.walkThrust * 0.3; // Scaled air control thrust
+      this.stamina = Math.min(this.maxStamina, this.stamina + CONFIG.player.staminaRechargeRate * deltaTime);
+      this.playerBody.linearDamping = 0.1; // Low damping for nice low-gravity floatiness
+    }
+
+    // Apply horizontal movement forces
+    if (isMoving) {
+      const thrust = new CANNON.Vec3(
         moveDirection.x * thrustStrength,
         0,
         moveDirection.z * thrustStrength
@@ -841,18 +1134,27 @@ class Game {
       this.playerBody.applyForce(thrust, this.playerBody.position);
     }
 
-    // Vertical thrusters (Space = up, Shift = down)
-    if (this.keys.space) {
-      this.playerBody.applyForce(new CANNON.Vec3(0, CONFIG.player.upThrustStrength, 0), this.playerBody.position);
-    }
-    if (this.keys.shift) {
-      this.playerBody.applyForce(new CANNON.Vec3(0, -CONFIG.player.downThrustStrength, 0), this.playerBody.position);
+    // 4. Jetpack boost logic
+    if (!this.isGrounded && this.hasDoubleJumped && this.keys.space) {
+      const heightGained = this.playerBody.position.y - this.jumpStartHeight;
+      if (this.jetpackFuel > 0 && heightGained < CONFIG.player.maxBoostHeight) {
+        // Apply upward jetpack thrust
+        this.playerBody.applyForce(new CANNON.Vec3(0, CONFIG.player.jetpackThrust, 0), this.playerBody.position);
+        this.jetpackFuel = Math.max(0, this.jetpackFuel - CONFIG.player.jetpackConsumptionRate * deltaTime);
+      }
     }
 
-    // Bound ceiling to prevent escaping the map
-    if (this.playerBody.position.y > CONFIG.player.speedCeiling) {
-      this.playerBody.position.y = CONFIG.player.speedCeiling;
-      this.playerBody.velocity.y = 0;
+    // 5. Soft ceiling repulsion — physically realistic boundary
+    this.physicsWorld.applyHeightCap(this.playerBody, CONFIG.player.speedCeiling, CONFIG.physics.heightCapForce);
+
+    // 7. Update HUD elements in real time
+    if (this.jetpackBar && this.jetpackText) {
+      this.jetpackBar.style.width = `${this.jetpackFuel}%`;
+      this.jetpackText.innerText = Math.round(this.jetpackFuel);
+    }
+    if (this.staminaBar && this.staminaText) {
+      this.staminaBar.style.width = `${this.stamina}%`;
+      this.staminaText.innerText = Math.round(this.stamina);
     }
   }
 

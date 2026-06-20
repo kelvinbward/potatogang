@@ -25,6 +25,20 @@ export class PhysicsWorld {
     this.world.defaultContactMaterial.friction = 0.3;
     this.world.defaultContactMaterial.restitution = 0.2; // Slight bounce
 
+    // Character controller material setups (zero-friction ground/wall slide)
+    this.playerMaterial = new CANNON.Material('playerMaterial');
+    this.environmentMaterial = new CANNON.Material('environmentMaterial');
+
+    const playerEnvContact = new CANNON.ContactMaterial(
+      this.playerMaterial,
+      this.environmentMaterial,
+      {
+        friction: 0.0,
+        restitution: 0.0
+      }
+    );
+    this.world.addContactMaterial(playerEnvContact);
+
     // Store references to sync meshes
     this.bodiesToSync = [];
   }
@@ -66,7 +80,8 @@ export class PhysicsWorld {
       position: new CANNON.Vec3(position.x, position.y, position.z),
       linearDamping: 0.75, // Drift momentum: slows down gradually
       angularDamping: 1.0,  // Stop rotation (no tumbling camera)
-      fixedRotation: true  // Keep player standing upright
+      fixedRotation: true,  // Keep player standing upright
+      material: this.playerMaterial // Zero friction contact material
     });
 
     // Set collision filters
@@ -83,7 +98,8 @@ export class PhysicsWorld {
     const body = new CANNON.Body({
       mass: 0, // Static bodies have mass 0
       shape: shape,
-      position: new CANNON.Vec3(position.x, position.y, position.z)
+      position: new CANNON.Vec3(position.x, position.y, position.z),
+      material: this.environmentMaterial // Zero friction contact material
     });
 
     if (rotation.x || rotation.y || rotation.z) {
@@ -154,5 +170,36 @@ export class PhysicsWorld {
     this.world.removeBody(body);
     // Also clean up sync bindings
     this.bodiesToSync = this.bodiesToSync.filter(binding => binding.body !== body);
+  }
+
+  // Applies a soft downward repulsion force when a body exceeds maxY.
+  // Force increases proportionally with penetration depth for a smooth boundary.
+  applyHeightCap(body, maxY, pushForce) {
+    if (body.position.y > maxY) {
+      const overshoot = body.position.y - maxY;
+      // Proportional + velocity-based damping for smooth deceleration
+      const force = -(overshoot * pushForce + body.velocity.y * pushForce * 0.5);
+      body.applyForce(new CANNON.Vec3(0, force, 0), body.position);
+    }
+  }
+
+  checkGrounded(body) {
+    let grounded = false;
+    const contacts = this.world.contacts;
+    for (let i = 0; i < contacts.length; i++) {
+      const contact = contacts[i];
+      if (contact.bi === body || contact.bj === body) {
+        // ni points from bi to bj.
+        // If bi is the player body, normal pointing towards player is -ni.
+        // If bj is the player body, normal pointing towards player is ni.
+        // A positive normalY means the contact point is on the bottom side of the player.
+        const normalY = contact.bi === body ? -contact.ni.y : contact.ni.y;
+        if (normalY > 0.5) {
+          grounded = true;
+          break;
+        }
+      }
+    }
+    return grounded;
   }
 }

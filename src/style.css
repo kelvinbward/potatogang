@@ -136,6 +136,22 @@ body, html {
   transition: width 0.15s ease-out;
 }
 
+#jetpack-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #00c6ff, var(--neon-blue));
+  border-radius: 5px;
+  box-shadow: 0 0 8px var(--neon-blue);
+  transition: width 0.1s ease-out;
+}
+
+#stamina-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ffcc00, #ffaa00);
+  border-radius: 5px;
+  box-shadow: 0 0 8px #ffaa00;
+  transition: width 0.1s ease-out;
+}
+
 /* Ammo Dots */
 .ammo-dots {
   display: flex;

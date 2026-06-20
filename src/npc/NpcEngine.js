@@ -29,6 +29,7 @@ export class BaseNpc {
 
     this.state = NPC_STATES.IDLE;
     this.spawnPoint = new THREE.Vector3(position.x, position.y, position.z);
+    this.targetHoverY = position.y; // Desired hover height (ground level)
     this.idleTimeOffset = Math.random() * 100;
 
     // Main 3D visual container
@@ -37,6 +38,9 @@ export class BaseNpc {
 
     // Physics body reference
     this.body = null;
+
+    // Track previous state for damping transitions
+    this._previousState = NPC_STATES.IDLE;
   }
 
   takeDamage(amount, hitPoint, hitDirection) {
@@ -141,9 +145,11 @@ export class BaseNpc {
     }
   }
 
-  die() {
+  die(silent = false) {
     this.state = NPC_STATES.DEAD;
-    this.spawnDeathExplosion();
+    if (!silent) {
+      this.spawnDeathExplosion();
+    }
     
     if (this.body) {
       this.physicsWorld.removeBody(this.body);
@@ -156,6 +162,16 @@ export class BaseNpc {
 
     // Sync mesh position with body (physics class handles standard sync, but we double-check)
     this.mesh.position.copy(this.body.position);
+
+    // Handle linearDamping transitions between states
+    if (this.state !== this._previousState) {
+      if (this.state === NPC_STATES.ATTACK) {
+        this.body.linearDamping = 0.92; // High damping to stop drifting in attack stance
+      } else {
+        this.body.linearDamping = 0.6;  // Normal NPC damping
+      }
+      this._previousState = this.state;
+    }
 
     if (CONFIG.npc.aiFrozen) {
       // Keep NPCs floating in place but bypass state changes/movements
@@ -198,14 +214,10 @@ export class BaseNpc {
   }
 
   updateIdle(deltaTime) {
-    // Float gently using math
-    const time = (performance.now() * 0.002) + this.idleTimeOffset;
-    const floatForce = Math.sin(time) * 1.5;
+    // Spring-force correction to maintain target hover height (ground level)
+    this._applyHoverForce();
     
-    // Add anti-gravity compensation
-    this.body.applyForce(new CANNON.Vec3(0, 12 + floatForce, 0), this.body.position);
-    
-    // Drag towards spawn point
+    // Drag towards spawn point horizontally
     const toSpawn = new CANNON.Vec3().copy(this.spawnPoint).vsub(this.body.position);
     if (toSpawn.length() > 1.5) {
       toSpawn.normalize();
@@ -213,26 +225,40 @@ export class BaseNpc {
     }
   }
 
-  updateChase(deltaTime, toPlayer) {
-    // Drift towards player
-    const direction = toPlayer.clone().normalize();
+  // Applies a spring-like force to keep the NPC at its target hover height.
+  // Counteracts gravity and corrects vertical drift proportionally.
+  _applyHoverForce() {
+    const npcMass = this.body.mass;
+    const gravityForce = CONFIG.physics.gravity * npcMass;
+    const heightError = this.targetHoverY - this.body.position.y;
     
-    // Apply thruster force towards player
+    // Spring constant: stronger correction for larger deviations
+    const springK = 25;
+    // Damping to prevent oscillation
+    const dampingK = 8;
+    const correctionForce = heightError * springK * npcMass - this.body.velocity.y * dampingK * npcMass;
+    
+    // Total upward force: gravity compensation + spring correction
+    this.body.applyForce(new CANNON.Vec3(0, gravityForce + correctionForce, 0), this.body.position);
+  }
+
+  updateChase(deltaTime, toPlayer) {
+    // Maintain hover height via spring force
+    this._applyHoverForce();
+
+    // Drift towards player horizontally
+    const direction = toPlayer.clone().normalize();
     const force = new CANNON.Vec3(
       direction.x * this.speed * 12,
-      direction.y * this.speed * 12 + 12.5, // Counteract gravity and adjust height
+      0, // Vertical handled by _applyHoverForce
       direction.z * this.speed * 12
     );
     this.body.applyForce(force, this.body.position);
   }
 
   updateAttack(deltaTime, toPlayer, onNpcShoot) {
-    // Damp current speed to stop drifting completely
-    const vel = this.body.velocity;
-    this.body.velocity.set(vel.x * 0.88, vel.y * 0.88, vel.z * 0.88);
-
-    // Levitating force
-    this.body.applyForce(new CANNON.Vec3(0, 12, 0), this.body.position);
+    // Maintain hover height via spring force (linearDamping handles horizontal stopping)
+    this._applyHoverForce();
 
     // Shooting interval check
     const now = performance.now() / 1000;
@@ -240,8 +266,8 @@ export class BaseNpc {
       this.lastFiredTime = now;
       
       const fireDir = toPlayer.clone().normalize();
-      // Add slight vertical tilt to counteract low-gravity drop on visual projectiles
-      fireDir.y += 0.08;
+      // Add configurable vertical tilt to compensate for projectile gravity drop
+      fireDir.y += CONFIG.npc.projectileYBias;
       fireDir.normalize();
 
       onNpcShoot(this, fireDir);
@@ -437,7 +463,7 @@ export class NpcEngine {
 
   clearAll() {
     this.npcs.forEach((npc) => {
-      npc.die();
+      npc.die(true); // Silent: no death explosion, no score/kills awarded
     });
     this.npcs = [];
   }

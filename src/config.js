@@ -1,17 +1,33 @@
 export const CONFIG = {
+  world: {
+    // The Y coordinate of the ground deck surface (top face of the floor slab).
+    // All spawn heights and obstacle placements must derive from this value.
+    GROUND_Y: -5,
+  },
   player: {
     maxHealth: 100,
-    thrustStrength: 550,
-    upThrustStrength: 850,
-    downThrustStrength: 500,
+    walkThrust: 550,
+    runThrust: 1100,
+    jumpImpulse: 250,
+    jetpackThrust: 800,
+    jetpackFuelCapacity: 100,
+    jetpackConsumptionRate: 60,
+    jetpackRechargeRate: 120,
+    staminaCapacity: 100,
+    staminaDrainRate: 35,
+    staminaRechargeRate: 20,
     speedCeiling: 18,
+    maxBoostHeight: 8,
     godMode: false,
     infiniteAmmo: false,
+    // Sphere collision radius for the player body
+    collisionRadius: 0.85,
   },
   physics: {
     // Acceleration due to gravity in meters per second squared (m/s²).
-    // Earth standard is ~9.8. Lower values simulate floaty kitchen space gravity.
-    gravity: 0.8,
+    gravity: 9.8,
+    // Force magnitude for soft height-cap repulsion (Newtons).
+    heightCapForce: 2000,
   },
   weapon: {
     maxAmmo: 10,
@@ -29,16 +45,41 @@ export const CONFIG = {
     projectileSpeed: 13.5,
     projectileLife: 4.0,
     projectileDamage: 15,
+    // Upward bias added to NPC fire direction to compensate for projectile gravity drop.
+    // Tunable from the debug panel.
+    projectileYBias: 0.08,
+  },
+  environment: {
+    loadObstacles: false, // Retain obstacles in code, but do not load by default
+    structures: [
+      // Floor counter left
+      { pos: { x: -12, y: -3.5, z: -10 }, size: { x: 10, y: 3, z: 20 }, type: 'counter' },
+      // Floor counter right
+      { pos: { x: 12, y: -3.5, z: 10 }, size: { x: 10, y: 3, z: 20 }, type: 'counter' },
+      
+      // Grounded center cereal box (replaces the high center shelf)
+      { pos: { x: 0, y: -3.25, z: -10 }, size: { x: 3, y: 3.5, z: 3 }, type: 'cereal' },
+      
+      // Giant cereal boxes (grounded)
+      { pos: { x: -8, y: -3.25, z: -16 }, size: { x: 2.2, y: 3.5, z: 1.2 }, type: 'cereal' },
+      { pos: { x: 8, y: -3.25, z: -19 }, size: { x: 2.2, y: 3.5, z: 1.2 }, type: 'cereal' },
+      
+      // Giant Soda Cans (grounded)
+      { pos: { x: -18, y: -3.5, z: 6 }, size: { x: 1.8, y: 3.0, z: 1.8 }, type: 'soda' },
+      { pos: { x: 18, y: -3.5, z: -6 }, size: { x: 1.8, y: 3.0, z: 1.8 }, type: 'soda' }
+    ]
   },
   sandbox: {
     spawnBroccoli: () => {
       if (window.gameInstance && window.gameInstance.npcEngine) {
-        window.gameInstance.npcEngine.spawnBroccoli({ x: 0, y: 2, z: -5 });
+        const pos = window.gameInstance.getSpawnInFrontOfPlayer(0.85);
+        window.gameInstance.npcEngine.spawnBroccoli(pos);
       }
     },
     spawnCarrot: () => {
       if (window.gameInstance && window.gameInstance.npcEngine) {
-        window.gameInstance.npcEngine.spawnCarrot({ x: 0, y: 2, z: -5 });
+        const pos = window.gameInstance.getSpawnInFrontOfPlayer(1.25);
+        window.gameInstance.npcEngine.spawnCarrot(pos);
       }
     },
     clearAllNPCs: () => {
