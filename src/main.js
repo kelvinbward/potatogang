@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { PhysicsWorld } from './physics/PhysicsWorld.js';
 import { NpcEngine } from './npc/NpcEngine.js';
+import { CONFIG } from './config.js';
+import { GUI } from 'lil-gui';
 
 class Game {
   constructor() {
@@ -21,12 +23,12 @@ class Game {
     this.isLocked = false;
 
     // Game stats
-    this.health = 100;
-    this.maxHealth = 100;
+    this.health = CONFIG.player.maxHealth;
+    this.maxHealth = CONFIG.player.maxHealth;
     this.score = 0;
     this.kills = 0;
-    this.ammo = 10;
-    this.maxAmmo = 10;
+    this.ammo = CONFIG.weapon.maxAmmo;
+    this.maxAmmo = CONFIG.weapon.maxAmmo;
     this.lastAmmoRegenTime = 0;
     this.isGameOver = false;
 
@@ -134,7 +136,10 @@ class Game {
     // 10. Bind Input & PointerLock Event Listeners
     this.setupControls();
 
-    // 11. Adjust screen size on resize
+    // 11. Setup lil-gui developer admin debug panel
+    this.setupDebugPanel();
+
+    // 12. Adjust screen size on resize
     window.addEventListener('resize', () => this.onWindowResize());
 
     // Start UI
@@ -274,6 +279,7 @@ class Game {
 
   spawnEnemies() {
     this.npcEngine.clearAll();
+    if (!CONFIG.npc.spawnEnabled) return;
 
     // Spawn Broccoli Boys (Green Faction)
     const broccoliSpawns = [
@@ -392,11 +398,72 @@ class Game {
     });
   }
 
-  fireProjectile() {
-    if (this.ammo <= 0) return;
+  setupDebugPanel() {
+    this.gui = new GUI({ title: 'Dev Admin Panel' });
+    this.gui.close();
 
-    this.ammo--;
-    this.updateAmmoUI();
+    // Toggle visibility with 'H' or 'F3' key
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'KeyH' || e.code === 'F3') {
+        if (this.gui.domElement.style.display === 'none') {
+          this.gui.show();
+          // Release pointer lock so user can interact with the menu
+          document.exitPointerLock();
+        } else {
+          this.gui.hide();
+        }
+      }
+    });
+
+    // Start hidden, let KeyH or F3 toggle it
+    this.gui.hide();
+
+    // 1. Sandbox Folder
+    const sandboxFolder = this.gui.addFolder('Sandbox');
+    sandboxFolder.add(CONFIG.sandbox, 'spawnBroccoli').name('Spawn Broccoli (Front)');
+    sandboxFolder.add(CONFIG.sandbox, 'spawnCarrot').name('Spawn Carrot (Front)');
+    sandboxFolder.add(CONFIG.sandbox, 'clearAllNPCs').name('Clear All Enemies');
+
+    // 2. Physics Folder
+    const physicsFolder = this.gui.addFolder('Physics');
+    physicsFolder.add(CONFIG.physics, 'gravity', 0, 9.8, 0.1).name('Gravity').onChange((value) => {
+      if (this.physicsWorld) {
+        this.physicsWorld.updateGravity(value);
+      }
+    });
+
+    // 3. Player & Weapon Folder
+    const playerFolder = this.gui.addFolder('Player & Weapon');
+    playerFolder.add(CONFIG.player, 'godMode').name('God Mode');
+    playerFolder.add(CONFIG.player, 'infiniteAmmo').name('Infinite Ammo');
+    playerFolder.add(CONFIG.player, 'thrustStrength', 100, 1500, 50).name('Horizontal Thrust');
+    playerFolder.add(CONFIG.player, 'upThrustStrength', 100, 2000, 50).name('Upward Thrust');
+    playerFolder.add(CONFIG.player, 'downThrustStrength', 100, 1500, 50).name('Downward Thrust');
+    playerFolder.add(CONFIG.weapon, 'ammoRegenInterval', 0.1, 3.0, 0.1).name('Ammo Regen Delay');
+    playerFolder.add(CONFIG.weapon, 'projectileSpeed', 10, 100, 1).name('Spud Bullet Speed');
+    playerFolder.add(CONFIG.weapon, 'projectileDamage', 5, 100, 5).name('Spud Damage');
+
+    // 4. NPCs Folder
+    const npcFolder = this.gui.addFolder('NPC / Enemies');
+    npcFolder.add(CONFIG.npc, 'spawnEnabled').name('Wave Spawning').onChange((value) => {
+      if (!value) {
+        this.npcEngine.clearAll();
+      } else {
+        this.spawnEnemies();
+      }
+    });
+    npcFolder.add(CONFIG.npc, 'aiFrozen').name('Freeze AI');
+    npcFolder.add(CONFIG.npc, 'projectileSpeed', 5, 50, 0.5).name('Veggies Bullet Speed');
+    npcFolder.add(CONFIG.npc, 'projectileDamage', 1, 100, 1).name('Veggies Damage');
+  }
+
+  fireProjectile() {
+    if (this.ammo <= 0 && !CONFIG.player.infiniteAmmo) return;
+
+    if (!CONFIG.player.infiniteAmmo) {
+      this.ammo--;
+      this.updateAmmoUI();
+    }
 
     // 1. Calculate camera launch vector
     const direction = new THREE.Vector3();
@@ -413,7 +480,7 @@ class Game {
     launchPos.y -= 0.12; // Adjust muzzle height
 
     // 2. Launch physics projectile
-    const speed = 28;
+    const speed = CONFIG.weapon.projectileSpeed;
     const velocity = new CANNON.Vec3(
       direction.x * speed,
       direction.y * speed,
@@ -440,7 +507,7 @@ class Game {
     // Sync mesh with physics
     this.physicsWorld.registerSync(mesh, body);
 
-    const projectile = { body, mesh, life: 3.5 }; // Alive for 3.5s
+    const projectile = { body, mesh, life: CONFIG.weapon.projectileLife };
     this.projectiles.push(projectile);
 
     // Collision listener on projectile
@@ -450,7 +517,7 @@ class Game {
       // If hit NPC, deal damage
       if (targetBody.npcInstance) {
         const hitDirection = direction.clone();
-        targetBody.npcInstance.takeDamage(20, mesh.position, hitDirection);
+        targetBody.npcInstance.takeDamage(CONFIG.weapon.projectileDamage, mesh.position, hitDirection);
       }
 
       // Small hit splat particles (golden energy/mashed potato crumbs)
@@ -461,8 +528,8 @@ class Game {
     });
 
     // 4. Trigger Spud Launcher recoil animation
-    this.recoilOffset = 0.18;
-    this.recoilRotation = 0.08;
+    this.recoilOffset = CONFIG.weapon.recoilOffset;
+    this.recoilRotation = CONFIG.weapon.recoilRotation;
 
     // Trigger visual muzzle flash
     this.muzzleFlash.intensity = 5;
@@ -479,7 +546,7 @@ class Game {
       .copy(npc.mesh.position)
       .addScaledVector(direction, 1.2);
 
-    const speed = 13.5;
+    const speed = CONFIG.npc.projectileSpeed;
     const velocity = new CANNON.Vec3(
       direction.x * speed,
       direction.y * speed,
@@ -501,12 +568,12 @@ class Game {
 
     this.physicsWorld.registerSync(mesh, body);
 
-    const npcProjectile = { body, mesh, life: 4.0 };
+    const npcProjectile = { body, mesh, life: CONFIG.npc.projectileLife };
     this.npcProjectiles.push(npcProjectile);
 
     body.addEventListener('collide', (event) => {
       if (event.body === this.playerBody) {
-        this.playerTakeDamage(15);
+        this.playerTakeDamage(CONFIG.npc.projectileDamage);
         this.spawnImpactParticles(mesh.position, color);
       }
       npcProjectile.life = 0; // Destroy on impact
@@ -514,7 +581,7 @@ class Game {
   }
 
   playerTakeDamage(amount) {
-    if (this.isGameOver) return;
+    if (this.isGameOver || CONFIG.player.godMode) return;
 
     this.health = Math.max(0, this.health - amount);
     this.updateHUD();
@@ -570,7 +637,7 @@ class Game {
     this.updateHUD();
 
     // If all vegetables are defeated, spawn another wave!
-    if (this.npcEngine.npcs.filter(npc => npc.state !== 'DEAD').length === 0) {
+    if (CONFIG.npc.spawnEnabled && this.npcEngine.npcs.filter(npc => npc.state !== 'DEAD').length === 0) {
       setTimeout(() => {
         this.spawnEnemies();
         document.getElementById('hud-message').innerText = "WAVE COMPLETED! NEW THREATS INCOMING...";
@@ -659,7 +726,7 @@ class Game {
 
     // 1. Process Ammo regeneration
     const now = performance.now() / 1000;
-    if (this.ammo < this.maxAmmo && now - this.lastAmmoRegenTime > 0.6) {
+    if (this.ammo < this.maxAmmo && now - this.lastAmmoRegenTime > CONFIG.weapon.ammoRegenInterval) {
       this.ammo++;
       this.lastAmmoRegenTime = now;
       this.updateAmmoUI();
@@ -675,8 +742,8 @@ class Game {
     this.yawObject.position.copy(this.playerBody.position);
 
     // 4. Update Weapon recoil animations
-    this.recoilOffset = THREE.MathUtils.lerp(this.recoilOffset, 0, 8 * deltaTime);
-    this.recoilRotation = THREE.MathUtils.lerp(this.recoilRotation, 0, 8 * deltaTime);
+    this.recoilOffset = THREE.MathUtils.lerp(this.recoilOffset, 0, CONFIG.weapon.recoilDecay * deltaTime);
+    this.recoilRotation = THREE.MathUtils.lerp(this.recoilRotation, 0, CONFIG.weapon.recoilDecay * deltaTime);
     
     // Animate weapon positioning offset
     this.weaponGroup.position.z = this.recoilOffset;
@@ -764,9 +831,9 @@ class Game {
     moveDirection.normalize();
 
     // Apply drift velocity push in low gravity
-    const thrustStrength = 550;
+    const thrustStrength = CONFIG.player.thrustStrength;
     if (moveDirection.lengthSq() > 0) {
-      const thrust = new CANNON.Vec3(
+       const thrust = new CANNON.Vec3(
         moveDirection.x * thrustStrength,
         0,
         moveDirection.z * thrustStrength
@@ -776,15 +843,15 @@ class Game {
 
     // Vertical thrusters (Space = up, Shift = down)
     if (this.keys.space) {
-      this.playerBody.applyForce(new CANNON.Vec3(0, 850, 0), this.playerBody.position);
+      this.playerBody.applyForce(new CANNON.Vec3(0, CONFIG.player.upThrustStrength, 0), this.playerBody.position);
     }
     if (this.keys.shift) {
-      this.playerBody.applyForce(new CANNON.Vec3(0, -500, 0), this.playerBody.position);
+      this.playerBody.applyForce(new CANNON.Vec3(0, -CONFIG.player.downThrustStrength, 0), this.playerBody.position);
     }
 
     // Bound ceiling to prevent escaping the map
-    if (this.playerBody.position.y > 18) {
-      this.playerBody.position.y = 18;
+    if (this.playerBody.position.y > CONFIG.player.speedCeiling) {
+      this.playerBody.position.y = CONFIG.player.speedCeiling;
       this.playerBody.velocity.y = 0;
     }
   }

@@ -1,4 +1,5 @@
 import * as CANNON from 'cannon-es';
+import { CONFIG } from '../config.js';
 
 export class PhysicsWorld {
   // Collision groups for filtering interactions
@@ -11,7 +12,7 @@ export class PhysicsWorld {
   constructor() {
     // Set up the physics world with low gravity for a floaty anti-gravity effect
     this.world = new CANNON.World({
-      gravity: new CANNON.Vec3(0, -0.8, 0) // Very low gravity (standard is -9.82)
+      gravity: new CANNON.Vec3(0, -CONFIG.physics.gravity, 0)
     });
 
     // Use GSSolver for stable collisions
@@ -26,6 +27,10 @@ export class PhysicsWorld {
 
     // Store references to sync meshes
     this.bodiesToSync = [];
+  }
+
+  updateGravity(gravityValue) {
+    this.world.gravity.set(0, -gravityValue, 0);
   }
 
   step(deltaTime) {

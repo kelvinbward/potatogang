@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
+import { CONFIG } from '../config.js';
 
 // NPC State Enum
 export const NPC_STATES = {
@@ -155,6 +156,12 @@ export class BaseNpc {
 
     // Sync mesh position with body (physics class handles standard sync, but we double-check)
     this.mesh.position.copy(this.body.position);
+
+    if (CONFIG.npc.aiFrozen) {
+      // Keep NPCs floating in place but bypass state changes/movements
+      this.updateIdle(deltaTime);
+      return;
+    }
 
     const distanceToPlayer = this.mesh.position.distanceTo(playerPos);
     const toPlayer = new THREE.Vector3().subVectors(playerPos, this.mesh.position);
