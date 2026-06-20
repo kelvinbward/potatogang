@@ -200,10 +200,12 @@ export class BaseNpc {
   updateIdle(deltaTime) {
     // Float gently using math
     const time = (performance.now() * 0.002) + this.idleTimeOffset;
-    const floatForce = Math.sin(time) * 1.5;
+    const npcMass = this.body.mass;
+    const gravityForce = CONFIG.physics.gravity * npcMass;
+    const floatForce = Math.sin(time) * (gravityForce * 0.12);
     
     // Add anti-gravity compensation
-    this.body.applyForce(new CANNON.Vec3(0, 12 + floatForce, 0), this.body.position);
+    this.body.applyForce(new CANNON.Vec3(0, gravityForce + floatForce, 0), this.body.position);
     
     // Drag towards spawn point
     const toSpawn = new CANNON.Vec3().copy(this.spawnPoint).vsub(this.body.position);
@@ -216,11 +218,13 @@ export class BaseNpc {
   updateChase(deltaTime, toPlayer) {
     // Drift towards player
     const direction = toPlayer.clone().normalize();
+    const npcMass = this.body.mass;
+    const gravityForce = CONFIG.physics.gravity * npcMass;
     
     // Apply thruster force towards player
     const force = new CANNON.Vec3(
       direction.x * this.speed * 12,
-      direction.y * this.speed * 12 + 12.5, // Counteract gravity and adjust height
+      direction.y * this.speed * 12 + gravityForce * 1.04, // Counteract gravity and adjust height
       direction.z * this.speed * 12
     );
     this.body.applyForce(force, this.body.position);
@@ -231,8 +235,11 @@ export class BaseNpc {
     const vel = this.body.velocity;
     this.body.velocity.set(vel.x * 0.88, vel.y * 0.88, vel.z * 0.88);
 
+    const npcMass = this.body.mass;
+    const gravityForce = CONFIG.physics.gravity * npcMass;
+
     // Levitating force
-    this.body.applyForce(new CANNON.Vec3(0, 12, 0), this.body.position);
+    this.body.applyForce(new CANNON.Vec3(0, gravityForce, 0), this.body.position);
 
     // Shooting interval check
     const now = performance.now() / 1000;

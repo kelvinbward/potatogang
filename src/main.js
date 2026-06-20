@@ -336,12 +336,12 @@ class Game {
       emissiveIntensity: 0.1
     });
 
-    // Scatter 6 cereal boxes and 6 soda cans at floating heights
+    // Scatter 6 cereal boxes and 6 soda cans at ground level (countertop surface is at y = -5)
     for (let i = 0; i < 6; i++) {
       const size = { x: 2.2, y: 4.5, z: 1.5 };
       const pos = {
         x: (Math.random() - 0.5) * 60,
-        y: Math.random() * 6 + 1.5,
+        y: -5 + size.y / 2, // sitting exactly on the ground deck: -2.75
         z: (Math.random() - 0.5) * 60
       };
       
@@ -371,7 +371,7 @@ class Game {
       const size = { x: 1.6, y: 3.2, z: 1.6 };
       const pos = {
         x: (Math.random() - 0.5) * 60,
-        y: Math.random() * 5 + 1.0,
+        y: -5 + size.y / 2, // sitting exactly on the ground deck: -3.4
         z: (Math.random() - 0.5) * 60
       };
 
@@ -456,19 +456,21 @@ class Game {
     this.npcEngine.clearAll();
     if (!CONFIG.npc.spawnEnabled) return;
 
-    // Spawn Broccoli Boys (Green Faction)
+    // Spawn Broccoli Boys (Green Faction) at ground level (sitting on y = -5)
+    // Broccoli radius is 0.85, so center y is -4.15
     const broccoliSpawns = [
-      { x: -10, y: 3, z: -10 },
-      { x: 10, y: 3, z: 10 },
-      { x: -18, y: 6, z: 8 },
-      { x: 18, y: 6, z: -8 }
+      { x: -10, y: -4.15, z: -10 },
+      { x: 10, y: -4.15, z: 10 },
+      { x: -18, y: -4.15, z: 8 },
+      { x: 18, y: -4.15, z: -8 }
     ];
 
-    // Spawn Carrot Cartel (Orange Faction)
+    // Spawn Carrot Cartel (Orange Faction) at ground level (sitting on y = -5)
+    // Carrot height is 2.5, so center y is -3.75
     const carrotSpawns = [
-      { x: 0, y: 6, z: -18 },
-      { x: -12, y: 1, z: 12 },
-      { x: 12, y: 1, z: -12 }
+      { x: 0, y: -3.75, z: -18 },
+      { x: -12, y: -3.75, z: 12 },
+      { x: 12, y: -3.75, z: -12 }
     ];
 
     broccoliSpawns.forEach(pos => {
@@ -1127,13 +1129,7 @@ class Game {
       }
     }
 
-    // 5. Apply simulated Earth gravity specifically to player body
-    // World gravity is 0.8. We simulate 9.8 by applying the difference: (9.8 - 0.8) * mass
-    const extraGravity = 9.8 - CONFIG.physics.gravity;
-    const gravityForce = new CANNON.Vec3(0, -extraGravity * this.playerBody.mass, 0);
-    this.playerBody.applyForce(gravityForce, this.playerBody.position);
-
-    // 6. Bound ceiling to prevent escaping the map
+    // 5. Bound ceiling to prevent escaping the map
     if (this.playerBody.position.y > CONFIG.player.speedCeiling) {
       this.playerBody.position.y = CONFIG.player.speedCeiling;
       this.playerBody.velocity.y = 0;

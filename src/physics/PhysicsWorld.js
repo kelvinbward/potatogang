@@ -25,6 +25,20 @@ export class PhysicsWorld {
     this.world.defaultContactMaterial.friction = 0.3;
     this.world.defaultContactMaterial.restitution = 0.2; // Slight bounce
 
+    // Character controller material setups (zero-friction ground/wall slide)
+    this.playerMaterial = new CANNON.Material('playerMaterial');
+    this.environmentMaterial = new CANNON.Material('environmentMaterial');
+
+    const playerEnvContact = new CANNON.ContactMaterial(
+      this.playerMaterial,
+      this.environmentMaterial,
+      {
+        friction: 0.0,
+        restitution: 0.0
+      }
+    );
+    this.world.addContactMaterial(playerEnvContact);
+
     // Store references to sync meshes
     this.bodiesToSync = [];
   }
@@ -66,7 +80,8 @@ export class PhysicsWorld {
       position: new CANNON.Vec3(position.x, position.y, position.z),
       linearDamping: 0.75, // Drift momentum: slows down gradually
       angularDamping: 1.0,  // Stop rotation (no tumbling camera)
-      fixedRotation: true  // Keep player standing upright
+      fixedRotation: true,  // Keep player standing upright
+      material: this.playerMaterial // Zero friction contact material
     });
 
     // Set collision filters
@@ -83,7 +98,8 @@ export class PhysicsWorld {
     const body = new CANNON.Body({
       mass: 0, // Static bodies have mass 0
       shape: shape,
-      position: new CANNON.Vec3(position.x, position.y, position.z)
+      position: new CANNON.Vec3(position.x, position.y, position.z),
+      material: this.environmentMaterial // Zero friction contact material
     });
 
     if (rotation.x || rotation.y || rotation.z) {

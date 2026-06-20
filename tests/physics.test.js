@@ -5,7 +5,7 @@ import * as CANNON from 'cannon-es';
 describe('PhysicsWorld initialization and bodies', () => {
   it('should initialize with correct gravity setting', () => {
     const physicsWorld = new PhysicsWorld();
-    expect(physicsWorld.world.gravity.y).toBe(-0.8);
+    expect(physicsWorld.world.gravity.y).toBe(-9.8);
   });
 
   it('should create player body with correct filters and properties', () => {
@@ -16,6 +16,7 @@ describe('PhysicsWorld initialization and bodies', () => {
     expect(playerBody.fixedRotation).toBe(true);
     expect(playerBody.linearDamping).toBe(0.75);
     expect(playerBody.angularDamping).toBe(1.0);
+    expect(playerBody.material).toBe(physicsWorld.playerMaterial);
     
     // Collision filters
     expect(playerBody.collisionFilterGroup).toBe(PhysicsWorld.GROUP_PLAYER);
@@ -30,5 +31,6 @@ describe('PhysicsWorld initialization and bodies', () => {
 
     expect(boxBody.mass).toBe(0);
     expect(boxBody.collisionFilterGroup).toBe(PhysicsWorld.GROUP_ENVIRONMENT);
+    expect(boxBody.material).toBe(physicsWorld.environmentMaterial);
   });
 });

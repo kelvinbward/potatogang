@@ -18,8 +18,7 @@ export const CONFIG = {
   },
   physics: {
     // Acceleration due to gravity in meters per second squared (m/s²).
-    // Earth standard is ~9.8. Lower values simulate floaty kitchen space gravity.
-    gravity: 0.8,
+    gravity: 9.8,
   },
   weapon: {
     maxAmmo: 10,

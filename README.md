@@ -11,7 +11,7 @@ In this prototype, you are a grounded potato armed with a **Spud Launcher**. You
 *   **The Broccoli Boys**: A rowdy green faction that charges aggressively and fires back at close range.
 *   **The Carrot Cartel**: A tactical orange faction of snipers that hover at a distance to take precise shots at you.
 
-Navigate, seek cover behind giant soda cans/cereal boxes (which can be dynamically toggled via the F3/KeyH debug panel), and defeat all enemies in a wave to trigger the next challenge.
+Navigate, seek cover behind giant soda cans/cereal boxes (which can be dynamically toggled via the F3 or H debug panel), and defeat all enemies in a wave to trigger the next challenge.
 
 ---
 
@@ -35,7 +35,7 @@ Navigate, seek cover behind giant soda cans/cereal boxes (which can be dynamical
 | **Left Shift (Hold)** | Run | Drains stamina for a high-speed sprint |
 | **Spacebar (Grounded)** | Jump | Applies a physics jump impulse |
 | **Spacebar (Airborne)** | Double-Jump / Jetpack | Second press activates the jetpack boost up to a max relative height limit (drains fuel) |
-| **Key H / F3** | Toggle Dev Panel | Toggles the lil-gui developer admin debug panel |
+| **Key H or F3** | Toggle Dev Panel | Toggles the lil-gui developer admin debug panel |
 
 *Click anywhere on the start screen to lock your mouse pointer via the **PointerLock API** and enter the arena. Press **ESC** at any time to release lock.*
 

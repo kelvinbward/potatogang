@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { CONFIG } from '../src/config.js';
 
 describe('Config Invariants', () => {
-  it('should have gravity invariant set to exactly 0.8', () => {
-    expect(CONFIG.physics.gravity).toBe(0.8);
+  it('should have gravity invariant set to exactly 9.8', () => {
+    expect(CONFIG.physics.gravity).toBe(9.8);
   });
 
   it('should contain all required player kinetics variables', () => {
