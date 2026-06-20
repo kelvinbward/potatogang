@@ -1,10 +1,18 @@
 export const CONFIG = {
   player: {
     maxHealth: 100,
-    thrustStrength: 550,
-    upThrustStrength: 850,
-    downThrustStrength: 500,
+    walkThrust: 550,
+    runThrust: 1100,
+    jumpImpulse: 250,
+    jetpackThrust: 800,
+    jetpackFuelCapacity: 100,
+    jetpackConsumptionRate: 60,
+    jetpackRechargeRate: 120,
+    staminaCapacity: 100,
+    staminaDrainRate: 35,
+    staminaRechargeRate: 20,
     speedCeiling: 18,
+    maxBoostHeight: 8,
     godMode: false,
     infiniteAmmo: false,
   },
@@ -29,6 +37,26 @@ export const CONFIG = {
     projectileSpeed: 13.5,
     projectileLife: 4.0,
     projectileDamage: 15,
+  },
+  environment: {
+    loadObstacles: false, // Retain obstacles in code, but do not load by default
+    structures: [
+      // Floor counter left
+      { pos: { x: -12, y: -3.5, z: -10 }, size: { x: 10, y: 3, z: 20 }, type: 'counter' },
+      // Floor counter right
+      { pos: { x: 12, y: -3.5, z: 10 }, size: { x: 10, y: 3, z: 20 }, type: 'counter' },
+      
+      // Grounded center cereal box (replaces the high center shelf)
+      { pos: { x: 0, y: -3.25, z: -10 }, size: { x: 3, y: 3.5, z: 3 }, type: 'cereal' },
+      
+      // Giant cereal boxes (grounded)
+      { pos: { x: -8, y: -3.25, z: -16 }, size: { x: 2.2, y: 3.5, z: 1.2 }, type: 'cereal' },
+      { pos: { x: 8, y: -3.25, z: -19 }, size: { x: 2.2, y: 3.5, z: 1.2 }, type: 'cereal' },
+      
+      // Giant Soda Cans (grounded)
+      { pos: { x: -18, y: -3.5, z: 6 }, size: { x: 1.8, y: 3.0, z: 1.8 }, type: 'soda' },
+      { pos: { x: 18, y: -3.5, z: -6 }, size: { x: 1.8, y: 3.0, z: 1.8 }, type: 'soda' }
+    ]
   },
   sandbox: {
     spawnBroccoli: () => {

@@ -155,4 +155,24 @@ export class PhysicsWorld {
     // Also clean up sync bindings
     this.bodiesToSync = this.bodiesToSync.filter(binding => binding.body !== body);
   }
+
+  checkGrounded(body) {
+    let grounded = false;
+    const contacts = this.world.contacts;
+    for (let i = 0; i < contacts.length; i++) {
+      const contact = contacts[i];
+      if (contact.bi === body || contact.bj === body) {
+        // ni points from bi to bj.
+        // If bi is the player body, normal pointing towards player is -ni.
+        // If bj is the player body, normal pointing towards player is ni.
+        // A positive normalY means the contact point is on the bottom side of the player.
+        const normalY = contact.bi === body ? -contact.ni.y : contact.ni.y;
+        if (normalY > 0.5) {
+          grounded = true;
+          break;
+        }
+      }
+    }
+    return grounded;
+  }
 }
