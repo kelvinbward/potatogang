@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Potato Gang: Anti-Gravity Spud</title>
+    <link rel="stylesheet" href="/src/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <!-- UI Overlay for Game Info (HUD) -->
+    <div id="hud" class="hidden">
+        <div class="hud-top-left glass">
+            <div class="hud-stat">
+                <span class="label">HP</span>
+                <div class="bar-container"><div id="health-bar" style="width: 100%;"></div></div>
+                <span id="health-text" class="value">100</span>
+            </div>
+            <div class="hud-stat">
+                <span class="label">AMMO</span>
+                <div class="ammo-dots" id="ammo-dots"></div>
+                <span id="ammo-text" class="value">10 / 10</span>
+            </div>
+        </div>
+        
+        <div class="hud-top-right glass">
+            <div class="hud-stat">
+                <span class="label">SCORE</span>
+                <span id="score" class="value monospace">00000</span>
+            </div>
+            <div class="hud-stat">
+                <span class="label">DEFEATED</span>
+                <span id="kills" class="value monospace">0</span>
+            </div>
+        </div>
+
+        <div class="hud-bottom glass">
+            <div class="hud-message" id="hud-message">GRAVITY SHIELD: 0.1G</div>
+        </div>
+
+        <!-- Crosshair in the absolute center -->
+        <div id="crosshair">
+            <div class="crosshair-ring"></div>
+            <div class="crosshair-dot"></div>
+        </div>
+    </div>
+
+    <!-- PointerLock Blocker Overlay -->
+    <div id="blocker">
+        <div id="instructions" class="glass">
+            <h1 class="game-title">POTATO GANG</h1>
+            <p class="game-subtitle">ANTI-GRAVITY SPUD PROTOTYPE</p>
+            <div class="instructions-grid">
+                <div class="instruction-item">
+                    <span class="key">WASD</span>
+                    <span class="desc">Drift Momentum</span>
+                </div>
+                <div class="instruction-item">
+                    <span class="key">SPACE</span>
+                    <span class="desc">Float Up</span>
+                </div>
+                <div class="instruction-item">
+                    <span class="key">SHIFT</span>
+                    <span class="desc">Float Down</span>
+                </div>
+                <div class="instruction-item">
+                    <span class="key">CLICK</span>
+                    <span class="desc">Shoot Spuds</span>
+                </div>
+            </div>
+            <p class="click-to-play">CLICK TO ENTER FLOAT ZONE</p>
+            <div class="faction-info">
+                <span>Threats: </span>
+                <span class="broccoli-tag">Broccoli Boys</span> & 
+                <span class="carrot-tag">Carrot Cartel</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="game-over" class="hidden">
+        <div class="glass game-over-box">
+            <h1 class="death-title">MASHED!</h1>
+            <p class="death-subtitle">You were processed into french fries.</p>
+            <div class="stats-summary">
+                <p>Score: <span id="final-score">0</span></p>
+                <p>Veggies Defeated: <span id="final-kills">0</span></p>
+            </div>
+            <button id="restart-btn" class="btn">RE-SPAWN SPUD</button>
+        </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
