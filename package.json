@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "cannon-es": "^0.20.0",
-    "three": "^0.160.0"
+    "three": "^0.184.0"
   },
   "devDependencies": {
     "@types/three": "^0.184.1",
