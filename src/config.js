@@ -1,4 +1,9 @@
 export const CONFIG = {
+  world: {
+    // The Y coordinate of the ground deck surface (top face of the floor slab).
+    // All spawn heights and obstacle placements must derive from this value.
+    GROUND_Y: -5,
+  },
   player: {
     maxHealth: 100,
     walkThrust: 550,
@@ -15,10 +20,14 @@ export const CONFIG = {
     maxBoostHeight: 8,
     godMode: false,
     infiniteAmmo: false,
+    // Sphere collision radius for the player body
+    collisionRadius: 0.85,
   },
   physics: {
     // Acceleration due to gravity in meters per second squared (m/s²).
     gravity: 9.8,
+    // Force magnitude for soft height-cap repulsion (Newtons).
+    heightCapForce: 2000,
   },
   weapon: {
     maxAmmo: 10,
@@ -36,6 +45,9 @@ export const CONFIG = {
     projectileSpeed: 13.5,
     projectileLife: 4.0,
     projectileDamage: 15,
+    // Upward bias added to NPC fire direction to compensate for projectile gravity drop.
+    // Tunable from the debug panel.
+    projectileYBias: 0.08,
   },
   environment: {
     loadObstacles: false, // Retain obstacles in code, but do not load by default
@@ -60,12 +72,14 @@ export const CONFIG = {
   sandbox: {
     spawnBroccoli: () => {
       if (window.gameInstance && window.gameInstance.npcEngine) {
-        window.gameInstance.npcEngine.spawnBroccoli({ x: 0, y: 2, z: -5 });
+        const pos = window.gameInstance.getSpawnInFrontOfPlayer(0.85);
+        window.gameInstance.npcEngine.spawnBroccoli(pos);
       }
     },
     spawnCarrot: () => {
       if (window.gameInstance && window.gameInstance.npcEngine) {
-        window.gameInstance.npcEngine.spawnCarrot({ x: 0, y: 2, z: -5 });
+        const pos = window.gameInstance.getSpawnInFrontOfPlayer(1.25);
+        window.gameInstance.npcEngine.spawnCarrot(pos);
       }
     },
     clearAllNPCs: () => {

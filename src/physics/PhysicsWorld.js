@@ -172,6 +172,17 @@ export class PhysicsWorld {
     this.bodiesToSync = this.bodiesToSync.filter(binding => binding.body !== body);
   }
 
+  // Applies a soft downward repulsion force when a body exceeds maxY.
+  // Force increases proportionally with penetration depth for a smooth boundary.
+  applyHeightCap(body, maxY, pushForce) {
+    if (body.position.y > maxY) {
+      const overshoot = body.position.y - maxY;
+      // Proportional + velocity-based damping for smooth deceleration
+      const force = -(overshoot * pushForce + body.velocity.y * pushForce * 0.5);
+      body.applyForce(new CANNON.Vec3(0, force, 0), body.position);
+    }
+  }
+
   checkGrounded(body) {
     let grounded = false;
     const contacts = this.world.contacts;

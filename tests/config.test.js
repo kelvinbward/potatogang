@@ -20,4 +20,24 @@ describe('Config Invariants', () => {
     expect(CONFIG.player.staminaRechargeRate).toBe(20);
     expect(CONFIG.player.maxBoostHeight).toBe(8);
   });
+
+  it('should have a world.GROUND_Y constant', () => {
+    expect(CONFIG.world).toBeDefined();
+    expect(CONFIG.world.GROUND_Y).toBe(-5);
+  });
+
+  it('should have a player collision radius', () => {
+    expect(CONFIG.player.collisionRadius).toBe(0.85);
+  });
+
+  it('should have a configurable NPC projectile Y bias', () => {
+    expect(CONFIG.npc.projectileYBias).toBeDefined();
+    expect(typeof CONFIG.npc.projectileYBias).toBe('number');
+    expect(CONFIG.npc.projectileYBias).toBe(0.08);
+  });
+
+  it('should have a soft height cap force constant', () => {
+    expect(CONFIG.physics.heightCapForce).toBeDefined();
+    expect(CONFIG.physics.heightCapForce).toBeGreaterThan(0);
+  });
 });

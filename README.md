@@ -6,7 +6,7 @@ Welcome to **Potato Gang: Anti-Gravity Spud**, a high-octane 3D First-Person Sho
 
 ## 🎮 Gameplay & Premise
 
-In this prototype, you are a grounded potato armed with a **Spud Launcher**. You must navigate a massive stainless steel countertop deck (`y = -6`) featuring programmatically scattered cereal boxes and soda cans that serve as cover, all engulfed in atmospheric dark cyberpunk fog (`0x0a0a12`).
+In this prototype, you are a grounded potato armed with a **Spud Launcher**. You must navigate a massive stainless steel countertop deck featuring programmatically scattered cereal boxes and soda cans that serve as cover, all engulfed in atmospheric dark cyberpunk fog.
 
 *   **The Broccoli Boys**: A rowdy green faction that charges aggressively and fires back at close range.
 *   **The Carrot Cartel**: A tactical orange faction of snipers that hover at a distance to take precise shots at you.
@@ -19,7 +19,7 @@ Navigate, seek cover behind giant soda cans/cereal boxes (which can be dynamical
 
 *   **Build Tool**: [Vite (v8.0.16)](./vite.config.js) - ESM bundler and hot-reloading development server.
 *   **3D Renderer**: **Three.js (v0.184.0)** - Powers the environment, custom weapon model, particle splatters, exponential fog, and cyberpunk neon lighting.
-*   **Physics Engine**: **Cannon-es (v0.20.0)** - Handles rigid body simulation. While global environment gravity is set to a floaty low-gravity of `0.8 m/s²`, the player experiences simulated Earth gravity (`9.8 m/s²` via custom downward forces) to keep ground controls highly responsive.
+*   **Physics Engine**: **Cannon-es (v0.20.0)** - Handles rigid body simulation with Earth-standard gravity (`9.8 m/s²`). All character movement is force-based through the physics engine.
 *   **Testing Suite**: **Vitest (v4.1.9)** - Modern unit-testing framework for config invariants and physics body creation validations.
 *   **HUD & Styling**: **Vanilla HTML & CSS** - Features a responsive glassmorphic neon overlay HUD with animated health, stamina, jetpack boost, and ammunition bars.
 
@@ -52,13 +52,19 @@ Here is a breakdown of the key files in the repository:
 ├── index.html              # Core HTML file containing game layouts, HUD, & overlays
 ├── package.json            # Scripts and package dependencies (three, cannon-es, vite, vitest)
 ├── vite.config.js          # Vite configurations (port 5173, hot-reload, polling)
-├── AGENTS.md               # Strict AI Agent system engineering policies and physics rules
+├── AGENTS.md               # AI Agent engineering policies, documentation rules, HITL protocol
+├── tests/
+│   ├── config.test.js      # Config invariant tests (gravity, spawn heights, constants)
+│   └── physics.test.js     # Physics body creation, spawn positions, soft height cap tests
 └── src/
+    ├── config.js           # Centralized game configuration (world constants, player, weapon, NPC)
     ├── main.js             # Game lifecycle, controls setup, projectile logic, & rendering loop
     ├── style.css           # Custom stylesheets (glassmorphism UI & fonts)
     ├── npc/
+    │   ├── AGENTS.md       # NPC-specific agent rules (spawn, hover, FSM, lifecycle)
     │   └── NpcEngine.js    # Faction details (Broccoli & Carrot classes), AI FSM, & behavior
     └── physics/
+        ├── AGENTS.md       # Physics-specific agent rules (gravity, collisions, boundaries)
         └── PhysicsWorld.js # Physics world initialization, body builders, & mesh syncing
 ```
 
@@ -105,8 +111,44 @@ Perfect for sandboxed environments or cross-platform hot-reload safety:
 
 ## ⚡ Technical Implementations of Interest
 
-*   **Earth Gravity Simulation**: Keeps world environment gravity at `0.8 m/s²` globally, while applying a custom `-9.0 * mass` downward force to the player body specifically, mimicking Earth physics for high-precision walking/running.
+*   **Earth Gravity Simulation**: World gravity is set to the standard `9.8 m/s²`. NPCs maintain ground-level positioning using a spring-damper hover force that counteracts gravity and corrects vertical drift.
 *   **Dynamic Friction/Damping**: To resolve floaty sliding, player damping is dynamically adjusted: `0.98` when stationary on ground (instant stop), `0.7` when walking/running, and `0.1` when in the air for drifting.
-*   **Double-Jump Jetpack**: Activates on a secondary Space press in mid-air, applying vertical thrust forces and draining a custom fuel capacity. Clamped to a max relative boost height (default: `8m` above jump launch point).
+*   **Double-Jump Jetpack**: Activates on a secondary Space press in mid-air, applying vertical thrust forces and draining a custom fuel capacity. Clamped to a soft max height via force-based repulsion (default: `18m`).
 *   **Collision Bitmasks**: Enforced at the physics step using strict bitmask filtering (`GROUP_PLAYER`, `GROUP_ENVIRONMENT`, etc.) to prevent projectiles from colliding with their launchers.
 *   **Low-Poly Geometry Generation**: Enemy models are constructed entirely programmatically out of primitives (`ConeGeometry`, `CylinderGeometry`, `BoxGeometry`, `SphereGeometry`) to avoid dependency on heavy external GLTF assets.
+*   **Centralized World Constants**: All spatial positions derive from `CONFIG.world.GROUND_Y` to prevent hardcoded coordinate drift.
+
+---
+
+## 🧪 Testing
+
+### Automated Tests
+Run the full suite with:
+```bash
+npm run test
+```
+
+Tests cover:
+- Config invariants (gravity, spawn heights, world constants)
+- Physics body creation and collision filters
+- Spawn position math (player, broccoli, carrot all touch GROUND_Y)
+- Soft height cap force behavior
+
+### Manual Functional Tests
+1. **Start game** → Player should be standing on the deck, not falling.
+2. **Die and restart** → Player should reset to deck level without dropping.
+3. **Press H → Spawn Broccoli** → NPC appears at ground level in front of the player.
+4. **Press H → Spawn Carrot** → NPC appears at ground level in front of the player.
+5. **Watch NPCs for 30+ seconds** → No vertical drift upward or downward.
+6. **Kill all NPCs** → New wave spawns at ground level.
+7. **Press H → Clear All Enemies** → No score or kills are awarded.
+8. **Reach height cap (~18m)** → Smooth pushback, not a hard clip.
+
+---
+
+## 📝 Documentation Policy
+
+This project follows a **Documentation-as-a-Deliverable** policy. See [AGENTS.md](./AGENTS.md) for full details. In summary:
+- README, docs, and AGENTS files are updated every session when relevant.
+- Design decisions are backed by web-searched best practices with cited references.
+- AI agents must present options with trade-offs for ambiguous decisions (human-in-the-loop).

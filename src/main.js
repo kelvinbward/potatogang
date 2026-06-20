@@ -126,15 +126,15 @@ class Game {
 
     // Cyberpunk Grid floor
     const gridHelper = new THREE.GridHelper(100, 50, 0x00e5ff, 0x112233);
-    gridHelper.position.y = -4.98;
+    gridHelper.position.y = CONFIG.world.GROUND_Y + 0.02; // Slight offset to prevent z-fighting
     this.scene.add(gridHelper);
 
     // 3. Setup Physics World
     this.physicsWorld = new PhysicsWorld();
 
-    // 4. Create Player Physics Body
-    // Positioned at (0, 2, 0)
-    this.playerBody = this.physicsWorld.createPlayerBody({ x: 0, y: 2, z: 0 }, 0.85);
+    // 4. Create Player Physics Body — spawn at ground level
+    const playerSpawnY = CONFIG.world.GROUND_Y + CONFIG.player.collisionRadius;
+    this.playerBody = this.physicsWorld.createPlayerBody({ x: 0, y: playerSpawnY, z: 0 }, CONFIG.player.collisionRadius);
 
     // 5. Setup Camera Yaw/Pitch Control Rig
     this.yawObject = new THREE.Group();
@@ -223,20 +223,22 @@ class Game {
 
   generateEnvironment() {
     // 1. Massive Stainless Steel Counter Deck
-    const deckGeo = new THREE.BoxGeometry(120, 2, 120);
+    const deckThickness = 2;
+    const deckCenterY = CONFIG.world.GROUND_Y - deckThickness / 2;
+    const deckGeo = new THREE.BoxGeometry(120, deckThickness, 120);
     const deckMat = new THREE.MeshStandardMaterial({
       color: 0x8e9bb0,
       metalness: 0.9,
       roughness: 0.15
     });
     const deckMesh = new THREE.Mesh(deckGeo, deckMat);
-    deckMesh.position.set(0, -6, 0); // top is at y = -5
+    deckMesh.position.set(0, deckCenterY, 0);
     deckMesh.receiveShadow = true;
     deckMesh.castShadow = true;
     this.scene.add(deckMesh);
 
     // Corresponding Cannon-es static deck body
-    this.physicsWorld.createStaticBox({ x: 0, y: -6, z: 0 }, { x: 120, y: 2, z: 120 });
+    this.physicsWorld.createStaticBox({ x: 0, y: deckCenterY, z: 0 }, { x: 120, y: deckThickness, z: 120 });
 
     // Track dynamic environment meshes/bodies for runtime toggles
     this.envMeshes = [];
@@ -336,12 +338,12 @@ class Game {
       emissiveIntensity: 0.1
     });
 
-    // Scatter 6 cereal boxes and 6 soda cans at ground level (countertop surface is at y = -5)
+    // Scatter 6 cereal boxes and 6 soda cans at ground level
     for (let i = 0; i < 6; i++) {
       const size = { x: 2.2, y: 4.5, z: 1.5 };
       const pos = {
         x: (Math.random() - 0.5) * 60,
-        y: -5 + size.y / 2, // sitting exactly on the ground deck: -2.75
+        y: CONFIG.world.GROUND_Y + size.y / 2,
         z: (Math.random() - 0.5) * 60
       };
       
@@ -371,7 +373,7 @@ class Game {
       const size = { x: 1.6, y: 3.2, z: 1.6 };
       const pos = {
         x: (Math.random() - 0.5) * 60,
-        y: -5 + size.y / 2, // sitting exactly on the ground deck: -3.4
+        y: CONFIG.world.GROUND_Y + size.y / 2,
         z: (Math.random() - 0.5) * 60
       };
 
@@ -456,21 +458,21 @@ class Game {
     this.npcEngine.clearAll();
     if (!CONFIG.npc.spawnEnabled) return;
 
-    // Spawn Broccoli Boys (Green Faction) at ground level (sitting on y = -5)
-    // Broccoli radius is 0.85, so center y is -4.15
+    // Derive NPC spawn heights from CONFIG.world.GROUND_Y
+    const broccoliY = CONFIG.world.GROUND_Y + 0.85; // sphere radius
+    const carrotY = CONFIG.world.GROUND_Y + 1.25;   // half cylinder height
+
     const broccoliSpawns = [
-      { x: -10, y: -4.15, z: -10 },
-      { x: 10, y: -4.15, z: 10 },
-      { x: -18, y: -4.15, z: 8 },
-      { x: 18, y: -4.15, z: -8 }
+      { x: -10, y: broccoliY, z: -10 },
+      { x: 10, y: broccoliY, z: 10 },
+      { x: -18, y: broccoliY, z: 8 },
+      { x: 18, y: broccoliY, z: -8 }
     ];
 
-    // Spawn Carrot Cartel (Orange Faction) at ground level (sitting on y = -5)
-    // Carrot height is 2.5, so center y is -3.75
     const carrotSpawns = [
-      { x: 0, y: -3.75, z: -18 },
-      { x: -12, y: -3.75, z: 12 },
-      { x: 12, y: -3.75, z: -12 }
+      { x: 0, y: carrotY, z: -18 },
+      { x: -12, y: carrotY, z: 12 },
+      { x: 12, y: carrotY, z: -12 }
     ];
 
     broccoliSpawns.forEach(pos => {
@@ -482,14 +484,26 @@ class Game {
     });
   }
 
+  // Returns a spawn position at ground level, offset in front of the player's current look direction.
+  getSpawnInFrontOfPlayer(entityHalfHeight) {
+    const yawAngle = this.yawObject.rotation.y;
+    const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), yawAngle).normalize();
+    const spawnDist = 6;
+    return {
+      x: this.yawObject.position.x + forward.x * spawnDist,
+      y: CONFIG.world.GROUND_Y + entityHalfHeight,
+      z: this.yawObject.position.z + forward.z * spawnDist
+    };
+  }
+
   setupControls() {
-    // Click blocker to request pointer lock
+    // Click blocker to request pointer lock on document.body for cross-browser reliability
     this.blocker.addEventListener('click', () => {
-      this.blocker.requestPointerLock();
+      document.body.requestPointerLock();
     });
 
     document.addEventListener('pointerlockchange', () => {
-      if (document.pointerLockElement === this.blocker) {
+      if (document.pointerLockElement === document.body) {
         this.isLocked = true;
         this.blocker.classList.add('hidden');
         this.hud.classList.remove('hidden');
@@ -892,10 +906,10 @@ class Game {
   }
 
   resetGame() {
-    this.health = 100;
+    this.health = CONFIG.player.maxHealth;
     this.score = 0;
     this.kills = 0;
-    this.ammo = 10;
+    this.ammo = CONFIG.weapon.maxAmmo;
     this.isGameOver = false;
 
     this.jetpackFuel = CONFIG.player.jetpackFuelCapacity;
@@ -907,8 +921,9 @@ class Game {
     this.updateHUD();
     this.updateAmmoUI();
 
-    // Reposition player physical body and clear velocity
-    this.playerBody.position.set(0, 2, 0);
+    // Reposition player physical body and clear velocity (lifecycle transition — permitted)
+    const resetY = CONFIG.world.GROUND_Y + CONFIG.player.collisionRadius;
+    this.playerBody.position.set(0, resetY, 0);
     this.playerBody.velocity.set(0, 0, 0);
 
     // Clear active projectiles
@@ -929,7 +944,7 @@ class Game {
 
     // Re-lock cursor
     this.gameOverScreen.classList.add('hidden');
-    this.blocker.requestPointerLock();
+    document.body.requestPointerLock();
   }
 
   onWindowResize() {
@@ -1129,11 +1144,8 @@ class Game {
       }
     }
 
-    // 5. Bound ceiling to prevent escaping the map
-    if (this.playerBody.position.y > CONFIG.player.speedCeiling) {
-      this.playerBody.position.y = CONFIG.player.speedCeiling;
-      this.playerBody.velocity.y = 0;
-    }
+    // 5. Soft ceiling repulsion — physically realistic boundary
+    this.physicsWorld.applyHeightCap(this.playerBody, CONFIG.player.speedCeiling, CONFIG.physics.heightCapForce);
 
     // 7. Update HUD elements in real time
     if (this.jetpackBar && this.jetpackText) {
