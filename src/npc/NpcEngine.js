@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
-import { PhysicsWorld } from '../physics/PhysicsWorld';
+import { PhysicsWorld } from '../physics/PhysicsWorld.js';
 import { CONFIG } from '../config.js';
 
 // NPC State Enum
