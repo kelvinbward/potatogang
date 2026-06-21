@@ -49,7 +49,7 @@ export const KITCHEN_LEVEL = [
   // Giant cereal boxes (grounded, flanking positions)
   {
     type: 'cereal',
-    pos: { x: -8, y: GROUND_Y + 1.75, z: -16 },
+    pos: { x: -8, y: GROUND_Y + 1.75, z: 16 },
     size: { x: 2.2, y: 3.5, z: 1.2 }
   },
   {

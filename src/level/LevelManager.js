@@ -42,20 +42,28 @@ export class LevelManager {
    */
   loadLevel() {
     this.unloadLevel();
+    this.scatterObstacles = [];
+
+    console.log('[LevelManager] Beginning level load...');
 
     // 1. Build the structural counter deck (permanent base platform)
     createCounterDeck(this.scene, this.physicsWorld);
     // Note: deck is not tracked in envMeshes/envBodies because it is a
     // permanent structural element and should never be unloaded mid-session.
+    console.log('[LevelManager] Structural counter deck created.');
 
     // 2. Iterate layout data and spawn each entry
+    let fixedCount = 0;
     KITCHEN_LEVEL.forEach(entry => {
       if (entry.isScatter) {
         this._spawnScatter(entry);
       } else {
         this._spawnFixed(entry);
+        fixedCount++;
       }
     });
+
+    console.log(`[LevelManager] Level load complete. Spawned ${fixedCount} fixed obstacles and ${this.scatterObstacles.length} scatter items.`);
   }
 
   /**
@@ -99,6 +107,8 @@ export class LevelManager {
 
     const body = this.physicsWorld.createStaticBox(entry.pos, entry.size);
     this.envBodies.push(body);
+
+    console.log(`[LevelManager] Spawned fixed '${entry.type}' at {x: ${entry.pos.x.toFixed(2)}, y: ${entry.pos.y.toFixed(2)}, z: ${entry.pos.z.toFixed(2)}}`);
   }
 
   /**
@@ -111,6 +121,7 @@ export class LevelManager {
    */
   _spawnScatter(entry) {
     const halfHeight = entry.size.y / 2;
+    const margin = Math.max(entry.size.x, entry.size.z) / 2 + 1.5;
     // Build exclusion rectangles from fixed obstacles + player spawn zone
     const exclusionZones = this._buildExclusionZones(entry);
 
@@ -118,7 +129,7 @@ export class LevelManager {
       let pos;
       let attempts = 0;
 
-      // Retry up to 12 times to find a non-overlapping XZ position
+      // Retry up to 50 times to find a non-overlapping XZ position
       do {
         pos = {
           x: (Math.random() - 0.5) * 60,
@@ -126,11 +137,12 @@ export class LevelManager {
           z: (Math.random() - 0.5) * 60
         };
         attempts++;
-      } while (attempts < 12 && this._overlapsAnyZone(pos, exclusionZones));
+      } while (attempts < 50 && this._overlapsAnyZone(pos, exclusionZones));
 
-      // Fallback nudge if still overlapping after max retries
+      // If still overlapping after max retries, skip spawning to avoid embedding in other geometry
       if (this._overlapsAnyZone(pos, exclusionZones)) {
-        pos.x = (pos.x > 0 ? 1 : -1) * (Math.abs(pos.x) + 6);
+        console.warn(`[LevelManager] Skipping scatter item '${entry.type}' (${i+1}/${entry.count}) due to lack of space after 50 attempts.`);
+        continue;
       }
 
       const mesh = this._createMesh(entry.type, entry.size);
@@ -142,6 +154,19 @@ export class LevelManager {
 
       const body = this.physicsWorld.createStaticBox(pos, entry.size);
       this.envBodies.push(body);
+
+      console.log(`[LevelManager] Spawned scatter '${entry.type}' at {x: ${pos.x.toFixed(2)}, y: ${pos.y.toFixed(2)}, z: ${pos.z.toFixed(2)}} after ${attempts} attempts`);
+
+      // Track globally for cross-type scatter avoidance
+      this.scatterObstacles.push({ pos, size: entry.size });
+
+      // Add this new scatter item to the exclusion zones so subsequent items don't overlap it
+      exclusionZones.push({
+        xMin: pos.x - entry.size.x / 2 - margin,
+        xMax: pos.x + entry.size.x / 2 + margin,
+        zMin: pos.z - entry.size.z / 2 - margin,
+        zMax: pos.z + entry.size.z / 2 + margin
+      });
     }
   }
 
@@ -172,6 +197,18 @@ export class LevelManager {
         zMax: entry.pos.z + entry.size.z / 2 + margin
       });
     });
+
+    // Add exclusion zones for any scatter items we've already spawned in previous loops
+    if (this.scatterObstacles) {
+      this.scatterObstacles.forEach(obs => {
+        zones.push({
+          xMin: obs.pos.x - obs.size.x / 2 - margin,
+          xMax: obs.pos.x + obs.size.x / 2 + margin,
+          zMin: obs.pos.z - obs.size.z / 2 - margin,
+          zMax: obs.pos.z + obs.size.z / 2 + margin
+        });
+      });
+    }
 
     return zones;
   }
