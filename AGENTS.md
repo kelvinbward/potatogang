@@ -91,5 +91,7 @@ Testing is mandatory and must be maintained alongside source code changes.
 
 ## 📂 6. Modular Folder Policies
 To minimize context and maintain developer focus, folder-specific rules are decoupled into their respective directories:
-* **Physics engine details**: Refer to [src/physics/AGENTS.md](./src/physics/AGENTS.md) for invariants, collision masks, and contact materials.
+* **Physics engine details**: Refer to [src/physics/AGENTS.md](./src/physics/AGENTS.md) for invariants, collision masks, contact materials, and the **layout & orchestration rules** (including the prohibition on hardcoded layout vectors in `main.js`).
 * **NPC system details**: Refer to [src/npc/AGENTS.md](./src/npc/AGENTS.md) for spawn rules, hover mechanics, FSM invariants, and lifecycle rules.
+* **Level layout data**: All obstacle positions, sizes, and types belong exclusively in `src/level/KitchenLevel.js`. The level engine (`src/level/LevelManager.js`) is the sole consumer.
+* **Render model factories**: All mesh construction belongs in `src/render/models/`. Each factory returns a fully configured `THREE.Group` or `THREE.Mesh`. Inline primitive construction in orchestration files (`main.js`, `NpcEngine.js`) is prohibited.

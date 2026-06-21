@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { PhysicsWorld } from './physics/PhysicsWorld.js';
 import { NpcEngine } from './npc/NpcEngine.js';
+import { LevelManager } from './level/LevelManager.js';
 import { CONFIG } from './config.js';
 import { GUI } from 'lil-gui';
 
@@ -70,6 +71,7 @@ class Game {
     this.healthText = document.getElementById('health-text');
     this.scoreText = document.getElementById('score');
     this.killsText = document.getElementById('kills');
+    this.remainingText = document.getElementById('remaining');
     this.finalScoreText = document.getElementById('final-score');
     this.finalKillsText = document.getElementById('final-kills');
     this.restartBtn = document.getElementById('restart-btn');
@@ -149,8 +151,9 @@ class Game {
     // 7. Create NPC Engine
     this.npcEngine = new NpcEngine(this.scene, this.physicsWorld);
 
-    // 8. Generate Floating Supermarket/Kitchen Obstacles
-    this.generateEnvironment();
+    // 8. Load Kitchen Level via the data-driven LevelManager pipeline
+    this.levelManager = new LevelManager(this.scene, this.physicsWorld);
+    this.levelManager.loadLevel();
 
     // 9. Spawn initial NPCs
     this.spawnEnemies();
@@ -219,185 +222,6 @@ class Game {
     this.muzzleFlash = new THREE.PointLight(0x39ff14, 0, 3);
     this.muzzleFlash.position.set(0.24, -0.16, -0.66);
     this.weaponGroup.add(this.muzzleFlash);
-  }
-
-  generateEnvironment() {
-    // 1. Massive Stainless Steel Counter Deck
-    const deckThickness = 2;
-    const deckCenterY = CONFIG.world.GROUND_Y - deckThickness / 2;
-    const deckGeo = new THREE.BoxGeometry(120, deckThickness, 120);
-    const deckMat = new THREE.MeshStandardMaterial({
-      color: 0x8e9bb0,
-      metalness: 0.9,
-      roughness: 0.15
-    });
-    const deckMesh = new THREE.Mesh(deckGeo, deckMat);
-    deckMesh.position.set(0, deckCenterY, 0);
-    deckMesh.receiveShadow = true;
-    deckMesh.castShadow = true;
-    this.scene.add(deckMesh);
-
-    // Corresponding Cannon-es static deck body
-    this.physicsWorld.createStaticBox({ x: 0, y: deckCenterY, z: 0 }, { x: 120, y: deckThickness, z: 120 });
-
-    // Track dynamic environment meshes/bodies for runtime toggles
-    this.envMeshes = [];
-    this.envBodies = [];
-
-    // 2. Load obstacles from config if enabled
-    if (CONFIG.environment.loadObstacles) {
-      this.spawnConfiguredObstacles();
-    }
-
-    // 3. Programmatic loop helper for floating/grounded cover
-    this.scatterObstacles();
-  }
-
-  spawnConfiguredObstacles() {
-    this.clearConfiguredObstacles();
-
-    const boxMaterial = new THREE.MeshStandardMaterial({
-      color: 0x9a3412,
-      roughness: 0.8
-    });
-    const sodaMaterial = new THREE.MeshStandardMaterial({
-      color: 0x0369a1,
-      roughness: 0.3,
-      metalness: 0.8
-    });
-    const shelfMaterial = new THREE.MeshStandardMaterial({
-      color: 0x1e293b,
-      roughness: 0.6,
-      metalness: 0.2
-    });
-
-    CONFIG.environment.structures.forEach(item => {
-      const body = this.physicsWorld.createStaticBox(item.pos, item.size);
-      this.envBodies.push(body);
-
-      let mesh;
-      if (item.type === 'cereal') {
-        const geo = new THREE.BoxGeometry(item.size.x, item.size.y, item.size.z);
-        mesh = new THREE.Mesh(geo, boxMaterial);
-        const labelGeo = new THREE.BoxGeometry(item.size.x + 0.02, 1.2, item.size.z + 0.02);
-        const labelMat = new THREE.MeshBasicMaterial({ color: 0xeab308 });
-        const label = new THREE.Mesh(labelGeo, labelMat);
-        label.position.y = 0.4;
-        mesh.add(label);
-      } else if (item.type === 'soda') {
-        const geo = new THREE.CylinderGeometry(item.size.x / 2, item.size.x / 2, item.size.y, 10);
-        mesh = new THREE.Mesh(geo, sodaMaterial);
-      } else {
-        const geo = new THREE.BoxGeometry(item.size.x, item.size.y, item.size.z);
-        mesh = new THREE.Mesh(geo, shelfMaterial);
-      }
-
-      mesh.position.copy(item.pos);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      this.scene.add(mesh);
-      this.envMeshes.push(mesh);
-    });
-  }
-
-  clearConfiguredObstacles() {
-    this.envMeshes.forEach(mesh => {
-      this.scene.remove(mesh);
-      mesh.geometry.dispose();
-      if (Array.isArray(mesh.material)) {
-        mesh.material.forEach(m => m.dispose());
-      } else {
-        mesh.material.dispose();
-      }
-    });
-    this.envMeshes = [];
-
-    this.envBodies.forEach(body => {
-      this.physicsWorld.removeBody(body);
-    });
-    this.envBodies = [];
-  }
-
-  scatterObstacles() {
-    this.scatterMeshes = [];
-    this.scatterBodies = [];
-
-    const cerealMat = new THREE.MeshStandardMaterial({
-      color: 0x1f2937,
-      roughness: 0.5,
-      metalness: 0.1,
-      emissive: 0xff0055,
-      emissiveIntensity: 0.15
-    });
-
-    const sodaMat = new THREE.MeshStandardMaterial({
-      color: 0x111827,
-      roughness: 0.2,
-      metalness: 0.9,
-      emissive: 0x00e5ff,
-      emissiveIntensity: 0.1
-    });
-
-    // Scatter 6 cereal boxes and 6 soda cans at ground level
-    for (let i = 0; i < 6; i++) {
-      const size = { x: 2.2, y: 4.5, z: 1.5 };
-      const pos = {
-        x: (Math.random() - 0.5) * 60,
-        y: CONFIG.world.GROUND_Y + size.y / 2,
-        z: (Math.random() - 0.5) * 60
-      };
-      
-      if (Math.abs(pos.x) < 8 && Math.abs(pos.z) < 8) {
-        pos.x += 12;
-      }
-
-      const body = this.physicsWorld.createStaticBox(pos, size);
-      this.scatterBodies.push(body);
-
-      const geo = new THREE.BoxGeometry(size.x, size.y, size.z);
-      const mesh = new THREE.Mesh(geo, cerealMat);
-      mesh.position.copy(pos);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-
-      const edges = new THREE.EdgesGeometry(geo);
-      const lineMat = new THREE.LineBasicMaterial({ color: 0xff0055, linewidth: 2 });
-      const wireframe = new THREE.LineSegments(edges, lineMat);
-      mesh.add(wireframe);
-
-      this.scene.add(mesh);
-      this.scatterMeshes.push(mesh);
-    }
-
-    for (let i = 0; i < 6; i++) {
-      const size = { x: 1.6, y: 3.2, z: 1.6 };
-      const pos = {
-        x: (Math.random() - 0.5) * 60,
-        y: CONFIG.world.GROUND_Y + size.y / 2,
-        z: (Math.random() - 0.5) * 60
-      };
-
-      if (Math.abs(pos.x) < 8 && Math.abs(pos.z) < 8) {
-        pos.z += 12;
-      }
-
-      const body = this.physicsWorld.createStaticBox(pos, size);
-      this.scatterBodies.push(body);
-
-      const geo = new THREE.CylinderGeometry(size.x / 2, size.x / 2, size.y, 8);
-      const mesh = new THREE.Mesh(geo, sodaMat);
-      mesh.position.copy(pos);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-
-      const edges = new THREE.EdgesGeometry(geo);
-      const lineMat = new THREE.LineBasicMaterial({ color: 0x00e5ff, linewidth: 2 });
-      const wireframe = new THREE.LineSegments(edges, lineMat);
-      mesh.add(wireframe);
-
-      this.scene.add(mesh);
-      this.scatterMeshes.push(mesh);
-    }
   }
 
   setupNeonLights() {
@@ -668,9 +492,9 @@ class Game {
     const envFolder = this.gui.addFolder('Environment');
     envFolder.add(CONFIG.environment, 'loadObstacles').name('Load Configured Obstacles').onChange((value) => {
       if (value) {
-        this.spawnConfiguredObstacles();
+        this.levelManager.loadLevel();
       } else {
-        this.clearConfiguredObstacles();
+        this.levelManager.unloadLevel();
       }
     });
   }
@@ -860,7 +684,7 @@ class Game {
         this.spawnEnemies();
         document.getElementById('hud-message').innerText = "WAVE COMPLETED! NEW THREATS INCOMING...";
         setTimeout(() => {
-          document.getElementById('hud-message').innerText = "GRAVITY SHIELD: 0.1G";
+          document.getElementById('hud-message').innerText = "TACTICAL KITCHEN ARENA — STAY GROUNDED";
         }, 3000);
       }, 1500);
     }
@@ -881,6 +705,12 @@ class Game {
 
     this.scoreText.innerText = String(this.score).padStart(5, '0');
     this.killsText.innerText = this.kills;
+
+    // Live remaining enemies count — drives the wave-completion trigger visibility
+    if (this.remainingText && this.npcEngine) {
+      const alive = this.npcEngine.npcs.filter(npc => npc.state !== 'DEAD').length;
+      this.remainingText.innerText = alive;
+    }
   }
 
   updateAmmoUI() {

@@ -85,6 +85,13 @@ export const CONFIG = {
     clearAllNPCs: () => {
       if (window.gameInstance && window.gameInstance.npcEngine) {
         window.gameInstance.npcEngine.clearAll();
+        // Re-spawn a fresh wave after clearing so the player isn't left with
+        // an empty arena. Silent clear preserves score integrity.
+        if (CONFIG.npc.spawnEnabled) {
+          setTimeout(() => {
+            window.gameInstance.spawnEnemies();
+          }, 1500);
+        }
       }
     }
   }

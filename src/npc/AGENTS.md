@@ -50,6 +50,7 @@ NPCs use a simple finite state machine: `IDLE → CHASE → ATTACK → DEAD`.
   - `silent = true`: Skips all effects. Used by `clearAll()` debug command and wave resets.
 * Dead NPCs are removed from the `npcs[]` array during the next `update()` tick.
 * `clearAll()` must always call `die(true)` to avoid unearned score.
+* **Post-clear respawn**: `CONFIG.sandbox.clearAllNPCs` triggers a silent `clearAll()` and then schedules `spawnEnemies()` after 1.5 seconds **if `CONFIG.npc.spawnEnabled` is true**. Agents must not add additional respawn calls after `clearAll()` — the config sandbox handler owns this lifecycle.
 
 ---
 
