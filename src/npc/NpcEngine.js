@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { PhysicsWorld } from '../physics/PhysicsWorld.js';
 import { CONFIG } from '../config.js';
+import { createBroccoliModel } from '../render/models/BroccoliModel.js';
+import { createCarrotModel } from '../render/models/CarrotModel.js';
 
 // NPC State Enum
 export const NPC_STATES = {
@@ -32,9 +34,9 @@ export class BaseNpc {
     this.targetHoverY = position.y; // Desired hover height (ground level)
     this.idleTimeOffset = Math.random() * 100;
 
-    // Main 3D visual container
-    this.mesh = new THREE.Group();
-    this.scene.add(this.mesh);
+    // this.mesh is assigned by each subclass's createVisuals() call,
+    // which delegates to the appropriate model factory.
+    this.mesh = null;
 
     // Physics body reference
     this.body = null;
@@ -290,45 +292,11 @@ export class BroccoliBoy extends BaseNpc {
   }
 
   createVisuals() {
-    // Low-poly broccoli: Stalk + green clustered spheres
-    const stalkGeo = new THREE.CylinderGeometry(0.2, 0.35, 1.2, 5);
-    const stalkMat = new THREE.MeshLambertMaterial({ color: 0x854d0e }); // Brownish
-    const stalk = new THREE.Mesh(stalkGeo, stalkMat);
-    stalk.position.y = -0.3;
-    this.mesh.add(stalk);
-
-    // Crown consisting of 3 green overlapping spheres
-    const crownMat = new THREE.MeshLambertMaterial({ color: 0x166534 }); // Deep Green
-    const crownGeo = new THREE.SphereGeometry(0.55, 6, 6);
-
-    const sphere1 = new THREE.Mesh(crownGeo, crownMat);
-    sphere1.position.set(0, 0.4, 0);
-    this.mesh.add(sphere1);
-
-    const sphere2 = new THREE.Mesh(crownGeo, crownMat);
-    sphere2.position.set(-0.35, 0.25, 0.2);
-    sphere2.scale.set(0.9, 0.9, 0.9);
-    this.mesh.add(sphere2);
-
-    const sphere3 = new THREE.Mesh(crownGeo, crownMat);
-    sphere3.position.set(0.35, 0.25, -0.2);
-    sphere3.scale.set(0.85, 0.85, 0.85);
-    this.mesh.add(sphere3);
-
-    // Angry eyes
-    const eyeGeo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-    
-    const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-    leftEye.position.set(-0.25, 0.35, 0.45);
-    const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-    rightEye.position.set(0.25, 0.35, 0.45);
-    
-    this.mesh.add(leftEye);
-    this.mesh.add(rightEye);
-
-    // Position setup
+    // Delegate all mesh construction to the BroccoliModel factory.
+    // Shadow casting/receiving is applied automatically via factory traverse.
+    this.mesh = createBroccoliModel();
     this.mesh.position.copy(this.spawnPoint);
+    this.scene.add(this.mesh);
   }
 
   createPhysics(position) {
@@ -357,66 +325,11 @@ export class CarrotCartel extends BaseNpc {
   }
 
   createVisuals() {
-    // Low-poly carrot: Elongated cone pointing downwards + green cylinders leaf crown
-    const bodyGeo = new THREE.ConeGeometry(0.4, 1.8, 6);
-    // Rotate cone so the sharp end points down
-    bodyGeo.rotateX(Math.PI);
-    const bodyMat = new THREE.MeshLambertMaterial({ color: 0xea580c }); // Rich Orange
-    const body = new THREE.Mesh(bodyGeo, bodyMat);
-    body.position.y = 0;
-    this.mesh.add(body);
-
-    // Green leafy tops at the flat top (Y is positive since cone tip is inverted down)
-    const leafGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.6, 4);
-    const leafMat = new THREE.MeshLambertMaterial({ color: 0x15803d }); // Bright green
-    
-    const leaf1 = new THREE.Mesh(leafGeo, leafMat);
-    leaf1.position.set(0, 1.1, 0);
-    leaf1.rotation.z = 0.2;
-    this.mesh.add(leaf1);
-
-    const leaf2 = new THREE.Mesh(leafGeo, leafMat);
-    leaf2.position.set(-0.15, 1.05, 0.1);
-    leaf2.rotation.z = -0.35;
-    leaf2.rotation.x = 0.25;
-    this.mesh.add(leaf2);
-
-    const leaf3 = new THREE.Mesh(leafGeo, leafMat);
-    leaf3.position.set(0.15, 1.05, -0.1);
-    leaf3.rotation.z = 0.35;
-    leaf3.rotation.x = -0.25;
-    this.mesh.add(leaf3);
-
-    // Angry eyes
-    const eyeGeo = new THREE.BoxGeometry(0.1, 0.08, 0.08);
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const pupilGeo = new THREE.BoxGeometry(0.04, 0.04, 0.04);
-    const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-
-    const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-    leftEye.position.set(-0.18, 0.4, 0.25);
-    const leftPupil = new THREE.Mesh(pupilGeo, pupilMat);
-    leftPupil.position.set(-0.18, 0.4, 0.29);
-    
-    const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-    rightEye.position.set(0.18, 0.4, 0.25);
-    const rightPupil = new THREE.Mesh(pupilGeo, pupilMat);
-    rightPupil.position.set(0.18, 0.4, 0.29);
-
-    // Slanted brow for anger
-    const browGeo = new THREE.BoxGeometry(0.5, 0.05, 0.05);
-    const browMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-    const brow = new THREE.Mesh(browGeo, browMat);
-    brow.position.set(0, 0.49, 0.27);
-    brow.rotation.z = 0.05;
-
-    this.mesh.add(leftEye);
-    this.mesh.add(leftPupil);
-    this.mesh.add(rightEye);
-    this.mesh.add(rightPupil);
-    this.mesh.add(brow);
-
+    // Delegate all mesh construction to the CarrotModel factory.
+    // Shadow casting/receiving is applied automatically via factory traverse.
+    this.mesh = createCarrotModel();
     this.mesh.position.copy(this.spawnPoint);
+    this.scene.add(this.mesh);
   }
 
   createPhysics(position) {

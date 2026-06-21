@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Potato Gang: Anti-Gravity Spud</title>
+    <title>Potato Gang: Kitchen Arena</title>
     <link rel="stylesheet" href="/src/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -46,10 +46,14 @@
                 <span class="label">DEFEATED</span>
                 <span id="kills" class="value monospace">0</span>
             </div>
+            <div class="hud-stat">
+                <span class="label">REMAINING</span>
+                <span id="remaining" class="value monospace">0</span>
+            </div>
         </div>
 
         <div class="hud-bottom glass">
-            <div class="hud-message" id="hud-message">GRAVITY SHIELD: 0.1G</div>
+            <div class="hud-message" id="hud-message">TACTICAL KITCHEN ARENA — STAY GROUNDED</div>
         </div>
 
         <!-- Crosshair in the absolute center -->
@@ -63,26 +67,26 @@
     <div id="blocker">
         <div id="instructions" class="glass">
             <h1 class="game-title">POTATO GANG</h1>
-            <p class="game-subtitle">ANTI-GRAVITY SPUD PROTOTYPE</p>
+            <p class="game-subtitle">HIGH-OCTANE TACTICAL KITCHEN ARENA</p>
             <div class="instructions-grid">
                 <div class="instruction-item">
                     <span class="key">WASD</span>
-                    <span class="desc">Drift Momentum</span>
+                    <span class="desc">Walk / Run (Grounded)</span>
                 </div>
                 <div class="instruction-item">
                     <span class="key">SPACE</span>
-                    <span class="desc">Float Up</span>
+                    <span class="desc">Jump / Hold for Jetpack Boost</span>
                 </div>
                 <div class="instruction-item">
                     <span class="key">SHIFT</span>
-                    <span class="desc">Float Down</span>
+                    <span class="desc">Sprint (Drains Stamina)</span>
                 </div>
                 <div class="instruction-item">
                     <span class="key">CLICK</span>
                     <span class="desc">Shoot Spuds</span>
                 </div>
             </div>
-            <p class="click-to-play">CLICK TO ENTER FLOAT ZONE</p>
+            <p class="click-to-play">CLICK TO ENTER THE KITCHEN ARENA</p>
             <div class="faction-info">
                 <span>Threats: </span>
                 <span class="broccoli-tag">Broccoli Boys</span> & 
