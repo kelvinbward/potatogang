@@ -99,7 +99,7 @@ class Game {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     document.getElementById('canvas-container').appendChild(this.renderer.domElement);
 
     // 2. Setup Lighting
@@ -287,8 +287,8 @@ class Game {
     const carrotY = CONFIG.world.GROUND_Y + 1.25;   // half cylinder height
 
     const broccoliSpawns = [
-      { x: -10, y: broccoliY, z: -10 },
-      { x: 10, y: broccoliY, z: 10 },
+      { x: -10, y: broccoliY, z: 10 },
+      { x: 10, y: broccoliY, z: -10 },
       { x: -18, y: broccoliY, z: 8 },
       { x: 18, y: broccoliY, z: -8 }
     ];
@@ -299,12 +299,16 @@ class Game {
       { x: 12, y: carrotY, z: -12 }
     ];
 
+    console.log(`[Game] Spawning new wave: ${broccoliSpawns.length} Broccoli, ${carrotSpawns.length} Carrots`);
+
     broccoliSpawns.forEach(pos => {
       this.npcEngine.spawnBroccoli(pos);
+      console.log(`[Game] Spawned Broccoli at {x: ${pos.x.toFixed(2)}, y: ${pos.y.toFixed(2)}, z: ${pos.z.toFixed(2)}}`);
     });
 
     carrotSpawns.forEach(pos => {
       this.npcEngine.spawnCarrot(pos);
+      console.log(`[Game] Spawned Carrot at {x: ${pos.x.toFixed(2)}, y: ${pos.y.toFixed(2)}, z: ${pos.z.toFixed(2)}}`);
     });
   }
 
