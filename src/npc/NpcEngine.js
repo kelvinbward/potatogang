@@ -144,6 +144,7 @@ export class BaseNpc {
       window.gameInstance.addParticles(particles);
       window.gameInstance.scorePoints(this.faction === 'Broccoli' ? 100 : 150);
       window.gameInstance.registerKill();
+      window.gameInstance.spawnLootPowerUps(this.mesh.position);
     }
   }
 

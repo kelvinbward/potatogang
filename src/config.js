@@ -31,7 +31,8 @@ export const CONFIG = {
   },
   weapon: {
     maxAmmo: 10,
-    ammoRegenInterval: 0.6, // seconds per ammo point regenerated
+    ammoRegenEnabled: true,
+    ammoRegenInterval: 1.2, // seconds per ammo point regenerated
     projectileSpeed: 28,
     projectileLife: 3.5, // seconds
     projectileDamage: 20,
@@ -68,6 +69,17 @@ export const CONFIG = {
       { pos: { x: -18, y: -3.5, z: 6 }, size: { x: 1.8, y: 3.0, z: 1.8 }, type: 'soda' },
       { pos: { x: 18, y: -3.5, z: -6 }, size: { x: 1.8, y: 3.0, z: 1.8 }, type: 'soda' }
     ]
+  },
+  powerups: {
+    respawnEnabled: true,
+    respawnTime: 10.0,
+    collectionRadius: 1.6,
+    healthAmount: 50.0,
+    ammoAmount: 10.0,
+    boostAmount: 60.0,
+    floatSpeed: 2.2,
+    floatRange: 0.18,
+    rotateSpeed: 1.8
   },
   sandbox: {
     spawnBroccoli: () => {

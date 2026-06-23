@@ -86,3 +86,11 @@ export const KITCHEN_LEVEL = [
     count: 6
   }
 ];
+
+export const POWERUP_SPAWNS = [
+  { type: 'health', pos: { x: -10, y: 4, z: -10 }, color: 0xff0055 },
+  { type: 'boost', pos: { x: 10, y: 4, z: 10 }, color: 0x00e5ff },
+  { type: 'ammo', pos: { x: -18, y: 6, z: 8 }, color: 0x39ff14 },
+  { type: 'health', pos: { x: 18, y: 6, z: -8 }, color: 0xff0055 },
+  { type: 'boost', pos: { x: 0, y: 6, z: -18 }, color: 0x00e5ff }
+];
