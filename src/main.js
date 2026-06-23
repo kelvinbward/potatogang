@@ -3,6 +3,7 @@ import * as CANNON from 'cannon-es';
 import { PhysicsWorld } from './physics/PhysicsWorld.js';
 import { NpcEngine } from './npc/NpcEngine.js';
 import { LevelManager } from './level/LevelManager.js';
+import { PowerUpManager } from './level/PowerUpManager.js';
 import { CONFIG } from './config.js';
 import { GUI } from 'lil-gui';
 
@@ -120,8 +121,8 @@ class Game {
     dirLight.shadow.camera.bottom = -d;
     this.scene.add(dirLight);
 
-    // Setup localized neon point lights
-    this.setupNeonLights();
+    // Setup power-ups manager (dynamic orbs & point lights)
+    this.powerUpManager = new PowerUpManager(this.scene, this);
 
     // Setup drifting kitchen steam particles
     this.setupSteamParticles();
@@ -224,34 +225,6 @@ class Game {
     this.weaponGroup.add(this.muzzleFlash);
   }
 
-  setupNeonLights() {
-    this.neonLights = [];
-
-    // Red/Magenta, Cyan, and Orange PointLights
-    const lightConfigs = [
-      { color: 0xff0055, pos: { x: -10, y: 4, z: -10 }, intensity: 10 },
-      { color: 0x00e5ff, pos: { x: 10, y: 4, z: 10 }, intensity: 10 },
-      { color: 0xff5e00, pos: { x: -18, y: 6, z: 8 }, intensity: 10 },
-      { color: 0xff0055, pos: { x: 18, y: 6, z: -8 }, intensity: 10 },
-      { color: 0x00e5ff, pos: { x: 0, y: 6, z: -18 }, intensity: 10 }
-    ];
-
-    lightConfigs.forEach(config => {
-      const light = new THREE.PointLight(config.color, config.intensity, 25);
-      light.position.set(config.pos.x, config.pos.y, config.pos.z);
-      light.castShadow = true;
-      light.shadow.bias = -0.002;
-      this.scene.add(light);
-      this.neonLights.push(light);
-
-      // Add a small visual sphere to represent the light bulb/source
-      const sphereGeo = new THREE.SphereGeometry(0.2, 8, 8);
-      const sphereMat = new THREE.MeshBasicMaterial({ color: config.color });
-      const bulb = new THREE.Mesh(sphereGeo, sphereMat);
-      bulb.position.copy(light.position);
-      this.scene.add(bulb);
-    });
-  }
 
   setupSteamParticles() {
     const particleCount = 500;
@@ -475,6 +448,7 @@ class Game {
     playerFolder.add(CONFIG.player, 'jetpackThrust', 200, 2000, 50).name('Jetpack Thrust');
     playerFolder.add(CONFIG.player, 'jumpImpulse', 50, 1000, 10).name('Jump Impulse');
     playerFolder.add(CONFIG.player, 'maxBoostHeight', 2, 30, 0.5).name('Max Boost Height');
+    playerFolder.add(CONFIG.weapon, 'ammoRegenEnabled').name('Ammo Regen Enabled');
     playerFolder.add(CONFIG.weapon, 'ammoRegenInterval', 0.1, 3.0, 0.1).name('Ammo Regen Delay');
     playerFolder.add(CONFIG.weapon, 'projectileSpeed', 10, 100, 1).name('Spud Bullet Speed');
     playerFolder.add(CONFIG.weapon, 'projectileDamage', 5, 100, 5).name('Spud Damage');
@@ -501,6 +475,17 @@ class Game {
         this.levelManager.unloadLevel();
       }
     });
+
+    // 6. Power-Ups Folder
+    const powerupFolder = this.gui.addFolder('Power-Ups');
+    powerupFolder.add(CONFIG.powerups, 'respawnEnabled').name('Respawn Enabled');
+    powerupFolder.add(CONFIG.powerups, 'respawnTime', 1, 30, 0.5).name('Respawn Cooldown');
+    powerupFolder.add(CONFIG.powerups, 'collectionRadius', 0.5, 5, 0.1).name('Pickup Radius');
+    powerupFolder.add(CONFIG.powerups, 'healthAmount', 5, 100, 5).name('HP Heal Amount');
+    powerupFolder.add(CONFIG.powerups, 'ammoAmount', 1, 10, 1).name('Ammo Reload Amount');
+    powerupFolder.add(CONFIG.powerups, 'boostAmount', 10, 100, 5).name('Fuel Charge Amount');
+    powerupFolder.add(CONFIG.powerups, 'floatSpeed', 0.5, 5.0, 0.1).name('Float Speed');
+    powerupFolder.add(CONFIG.powerups, 'rotateSpeed', 0.5, 5.0, 0.1).name('Rotate Speed');
   }
 
   fireProjectile() {
@@ -694,6 +679,12 @@ class Game {
     }
   }
 
+  spawnLootPowerUps(position) {
+    if (this.powerUpManager) {
+      this.powerUpManager.spawnLoot(position);
+    }
+  }
+
   updateHUD() {
     this.healthBar.style.width = `${this.health}%`;
     this.healthText.innerText = Math.round(this.health);
@@ -719,13 +710,32 @@ class Game {
 
   updateAmmoUI() {
     const container = document.getElementById('ammo-dots');
-    container.innerHTML = '';
-    for (let i = 0; i < this.maxAmmo; i++) {
-      const dot = document.createElement('div');
-      dot.className = 'ammo-dot' + (i >= this.ammo ? ' spent' : '');
-      container.appendChild(dot);
+    if (!container) return;
+
+    const dots = container.children;
+    
+    // Recreate only if maxAmmo changed or dots list is empty/mismatched
+    if (dots.length !== this.maxAmmo) {
+      container.innerHTML = '';
+      for (let i = 0; i < this.maxAmmo; i++) {
+        const dot = document.createElement('div');
+        container.appendChild(dot);
+      }
     }
-    document.getElementById('ammo-text').innerText = `${this.ammo} / ${this.maxAmmo}`;
+
+    // Simply update the class on existing DOM elements
+    for (let i = 0; i < this.maxAmmo; i++) {
+      const spent = i >= this.ammo;
+      const dotClass = 'ammo-dot' + (spent ? ' spent' : '');
+      if (dots[i].className !== dotClass) {
+        dots[i].className = dotClass;
+      }
+    }
+
+    const textEl = document.getElementById('ammo-text');
+    if (textEl) {
+      textEl.innerText = `${this.ammo} / ${this.maxAmmo}`;
+    }
   }
 
   triggerGameOver() {
@@ -773,6 +783,11 @@ class Game {
     });
     this.npcProjectiles = [];
 
+    // Reset Power-Ups
+    if (this.powerUpManager) {
+      this.powerUpManager.reset();
+    }
+
     // Respawn Enemies
     this.spawnEnemies();
 
@@ -795,7 +810,7 @@ class Game {
 
     // 1. Process Ammo regeneration
     const now = performance.now() / 1000;
-    if (this.ammo < this.maxAmmo && now - this.lastAmmoRegenTime > CONFIG.weapon.ammoRegenInterval) {
+    if (CONFIG.weapon.ammoRegenEnabled && this.ammo < this.maxAmmo && now - this.lastAmmoRegenTime > CONFIG.weapon.ammoRegenInterval) {
       this.ammo++;
       this.lastAmmoRegenTime = now;
       this.updateAmmoUI();
@@ -825,6 +840,11 @@ class Game {
         this.yawObject.position,
         (npc, direction) => this.onNpcShoot(npc, direction)
       );
+    }
+
+    // 5b. Update Power-up manager
+    if (!this.isGameOver && this.isLocked && this.powerUpManager) {
+      this.powerUpManager.update(deltaTime, this.yawObject.position);
     }
 
     // 6. Update player projectiles
