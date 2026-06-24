@@ -104,6 +104,21 @@
                 <p>Score: <span id="final-score">0</span></p>
                 <p>Veggies Defeated: <span id="final-kills">0</span></p>
             </div>
+
+            <!-- Global High Score Submission -->
+            <div id="score-submission" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <input type="text" id="player-name" placeholder="ENTER NAME" class="monospace" style="flex: 1; padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid var(--neon-blue); color: var(--text-primary); border-radius: 8px;" maxlength="15">
+                <button id="submit-score-btn" class="btn" style="padding: 10px 20px; font-size: 1rem;">SUBMIT</button>
+            </div>
+
+            <!-- Leaderboard -->
+            <div style="margin-bottom: 20px; text-align: left; background: rgba(0,0,0,0.3); border: 1px solid var(--neon-green); border-radius: 8px; padding: 10px;">
+                <h3 style="color: var(--neon-green); margin-bottom: 10px; text-align: center;" class="monospace">TOP SPUDS</h3>
+                <ul id="leaderboard-list" class="monospace" style="list-style-type: none; padding: 0; margin: 0; font-size: 0.9rem; max-height: 150px; overflow-y: auto;">
+                    <!-- Scores dynamically inserted here -->
+                </ul>
+            </div>
+
             <button id="restart-btn" class="btn">RE-SPAWN SPUD</button>
         </div>
     </div>

@@ -6,6 +6,7 @@ import { LevelManager } from './level/LevelManager.js';
 import { PowerUpManager } from './level/PowerUpManager.js';
 import { CONFIG } from './config.js';
 import { GUI } from 'lil-gui';
+import { supabase } from './supabaseClient.js';
 
 class Game {
   constructor() {
@@ -77,6 +78,15 @@ class Game {
     this.finalKillsText = document.getElementById('final-kills');
     this.restartBtn = document.getElementById('restart-btn');
     this.crosshairRing = document.querySelector('.crosshair-ring');
+
+    this.scoreSubmission = document.getElementById('score-submission');
+    this.playerNameInput = document.getElementById('player-name');
+    this.submitScoreBtn = document.getElementById('submit-score-btn');
+    this.leaderboardList = document.getElementById('leaderboard-list');
+
+    if (this.submitScoreBtn) {
+      this.submitScoreBtn.addEventListener('click', () => this.submitHighScore());
+    }
 
     this.jetpackBar = document.getElementById('jetpack-bar');
     this.jetpackText = document.getElementById('jetpack-text');
@@ -738,6 +748,75 @@ class Game {
     }
   }
 
+  async submitHighScore() {
+    if (!this.playerNameInput || !this.submitScoreBtn) return;
+
+    const playerName = this.playerNameInput.value.trim();
+    if (!playerName) return;
+
+    // Prevent double clicking
+    this.submitScoreBtn.disabled = true;
+    this.submitScoreBtn.innerText = 'SUBMITTING...';
+
+    const { error } = await supabase
+      .from('high_scores')
+      .insert([
+        { player_name: playerName, score: this.score, kills: this.kills }
+      ]);
+
+    if (error) {
+      console.error('Error submitting score:', error);
+      this.submitScoreBtn.disabled = false;
+      this.submitScoreBtn.innerText = 'SUBMIT';
+    } else {
+      this.scoreSubmission.style.display = 'none';
+      this.fetchLeaderboard();
+    }
+  }
+
+  async fetchLeaderboard() {
+    if (!this.leaderboardList) return;
+
+    this.leaderboardList.innerHTML = '<li>Loading...</li>';
+
+    const { data, error } = await supabase
+      .from('high_scores')
+      .select('player_name, score')
+      .order('score', { ascending: false })
+      .limit(10);
+
+    if (error) {
+      console.error('Error fetching leaderboard:', error);
+      this.leaderboardList.innerHTML = '<li style="color: red;">Error loading scores</li>';
+      return;
+    }
+
+    this.leaderboardList.innerHTML = '';
+
+    if (data && data.length > 0) {
+      data.forEach((entry, index) => {
+        const li = document.createElement('li');
+        li.style.display = 'flex';
+        li.style.justifyContent = 'space-between';
+        li.style.padding = '4px 0';
+        li.style.borderBottom = '1px solid rgba(57, 255, 20, 0.2)';
+
+        const rankName = document.createElement('span');
+        rankName.innerText = `${index + 1}. ${entry.player_name}`;
+
+        const scoreSpan = document.createElement('span');
+        scoreSpan.innerText = entry.score;
+        scoreSpan.style.color = 'var(--neon-green)';
+
+        li.appendChild(rankName);
+        li.appendChild(scoreSpan);
+        this.leaderboardList.appendChild(li);
+      });
+    } else {
+      this.leaderboardList.innerHTML = '<li>No scores yet!</li>';
+    }
+  }
+
   triggerGameOver() {
     this.isGameOver = true;
     document.exitPointerLock();
@@ -745,8 +824,18 @@ class Game {
     this.finalScoreText.innerText = this.score;
     this.finalKillsText.innerText = this.kills;
 
+    // Reset submission form
+    if (this.scoreSubmission && this.submitScoreBtn && this.playerNameInput) {
+      this.scoreSubmission.style.display = 'flex';
+      this.submitScoreBtn.disabled = false;
+      this.submitScoreBtn.innerText = 'SUBMIT';
+      this.playerNameInput.value = '';
+    }
+
     this.gameOverScreen.classList.remove('hidden');
     this.hud.classList.add('hidden');
+
+    this.fetchLeaderboard();
   }
 
   resetGame() {
