@@ -155,7 +155,7 @@ export class BaseNpc {
     }
     
     if (this.body) {
-      this.physicsWorld.removeBody(this.body);
+      this.physicsWorld.deferRemoveBody(this.body);
     }
     this.scene.remove(this.mesh);
   }
