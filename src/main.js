@@ -61,7 +61,7 @@ class Game {
     this.centerScreen = new THREE.Vector2(0, 0);
 
     // Timing
-    this.clock = new THREE.Clock();
+    this.timer = new THREE.Timer();
 
     // DOM References
     this.blocker = document.getElementById('blocker');
@@ -401,6 +401,7 @@ class Game {
 
     // Restart game button
     this.restartBtn.addEventListener('click', () => {
+      this.restartBtn.blur();
       this.resetGame();
     });
   }
@@ -806,7 +807,8 @@ class Game {
   animate() {
     requestAnimationFrame(() => this.animate());
 
-    const deltaTime = this.clock.getDelta();
+    this.timer.update();
+    const deltaTime = this.timer.getDelta();
 
     // 1. Process Ammo regeneration
     const now = performance.now() / 1000;

@@ -41,6 +41,9 @@ export class PhysicsWorld {
 
     // Store references to sync meshes
     this.bodiesToSync = [];
+
+    // Store bodies pending removal
+    this.bodiesToRemove = [];
   }
 
   updateGravity(gravityValue) {
@@ -51,6 +54,12 @@ export class PhysicsWorld {
     // Clamp delta time to avoid physics explosions at low frame rates
     const timeStep = Math.min(deltaTime, 0.1);
     this.world.step(timeStep);
+
+    // Process deferred removals safely outside the physics step loop
+    for (const body of this.bodiesToRemove) {
+      this.removeBody(body);
+    }
+    this.bodiesToRemove = [];
 
     // Sync visual meshes with their physics bodies
     for (let i = this.bodiesToSync.length - 1; i >= 0; i--) {
@@ -170,6 +179,12 @@ export class PhysicsWorld {
     this.world.removeBody(body);
     // Also clean up sync bindings
     this.bodiesToSync = this.bodiesToSync.filter(binding => binding.body !== body);
+  }
+
+  deferRemoveBody(body) {
+    if (!this.bodiesToRemove.includes(body)) {
+      this.bodiesToRemove.push(body);
+    }
   }
 
   // Applies a soft downward repulsion force when a body exceeds maxY.
