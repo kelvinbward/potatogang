@@ -71,7 +71,8 @@ export class PowerUpManager {
   update(deltaTime, playerPosition) {
     this.totalElapsed += deltaTime;
 
-    this.powerups.forEach((powerup) => {
+    for (let i = 0; i < this.powerups.length; i++) {
+      const powerup = this.powerups[i];
       if (powerup.active) {
         // 1. Bobbing Vertical Floating Motion
         const bob = Math.sin(this.totalElapsed * CONFIG.powerups.floatSpeed + powerup.timeOffset) * CONFIG.powerups.floatRange;
@@ -109,7 +110,7 @@ export class PowerUpManager {
           this.respawn(powerup);
         }
       }
-    });
+    }
   }
 
   /**
