@@ -46,6 +46,12 @@ class Game {
     this.stamina = CONFIG.player.staminaCapacity;
     this.maxStamina = CONFIG.player.staminaCapacity;
 
+    // Pre-allocated vectors for performance in hot paths
+    this._moveDirection = new THREE.Vector3();
+    this._forward = new THREE.Vector3();
+    this._right = new THREE.Vector3();
+    this._yAxis = new THREE.Vector3(0, 1, 0);
+
     // Projectile tracking lists
     this.projectiles = [];
     this.npcProjectiles = [];
@@ -1039,14 +1045,14 @@ class Game {
     const yawAngle = this.yawObject.rotation.y;
     
     // Forward direction in horizontal plane (XZ)
-    const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), yawAngle).normalize();
-    const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), yawAngle).normalize();
+    this._forward.set(0, 0, -1).applyAxisAngle(this._yAxis, yawAngle).normalize();
+    this._right.set(1, 0, 0).applyAxisAngle(this._yAxis, yawAngle).normalize();
 
-    const moveDirection = new THREE.Vector3();
-    if (this.keys.w) moveDirection.add(forward);
-    if (this.keys.s) moveDirection.sub(forward);
-    if (this.keys.d) moveDirection.add(right);
-    if (this.keys.a) moveDirection.sub(right);
+    const moveDirection = this._moveDirection.set(0, 0, 0);
+    if (this.keys.w) moveDirection.add(this._forward);
+    if (this.keys.s) moveDirection.sub(this._forward);
+    if (this.keys.d) moveDirection.add(this._right);
+    if (this.keys.a) moveDirection.sub(this._right);
     moveDirection.normalize();
 
     const isMoving = moveDirection.lengthSq() > 0;
