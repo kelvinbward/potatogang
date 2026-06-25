@@ -67,7 +67,11 @@ export class PhysicsWorld {
       
       // If mesh was disposed, clean it up from sync list
       if (!binding.mesh || binding.mesh.parent === null) {
-        this.bodiesToSync.splice(i, 1);
+        const lastIndex = this.bodiesToSync.length - 1;
+        if (i !== lastIndex) {
+          this.bodiesToSync[i] = this.bodiesToSync[lastIndex];
+        }
+        this.bodiesToSync.pop();
         continue;
       }
 
