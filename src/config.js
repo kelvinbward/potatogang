@@ -82,6 +82,7 @@ export const CONFIG = {
     rotateSpeed: 1.8
   },
   sandbox: {
+    debugLogging: false,
     spawnBroccoli: () => {
       if (window.gameInstance && window.gameInstance.npcEngine) {
         const pos = window.gameInstance.getSpawnInFrontOfPlayer(0.85);
@@ -108,3 +109,9 @@ export const CONFIG = {
     }
   }
 };
+
+export function logDebug(...args) {
+  if (CONFIG.sandbox.debugLogging) {
+    console.log(...args);
+  }
+}

@@ -100,3 +100,4 @@ To minimize context and maintain developer focus, folder-specific rules are deco
 * **Zero GC Hot Paths**: Never instantiate objects (`new THREE.Vector3()`, `new CANNON.Vec3()`, etc.) inside `update()`, `render()`, or physics tick loops. This generates garbage collection stutter.
   - **Pattern**: Pre-allocate required vectors/quaternions as class properties in the constructor (e.g., `this._moveDirection = new THREE.Vector3()`) and mutate them in-place using `.set()`, `.copy()`, or `.applyAxisAngle()`.
   - Reference: See `docs/performance.md` for benchmarks and examples.
+* **File Naming Best Practices**: When creating files (e.g. for benchmarks, tests, or scripts), give them meaningful, non-generic names (e.g. `performance_related_object` instead of `benchmark2.js`) to avoid overlaps and improve clarity.

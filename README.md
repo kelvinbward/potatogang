@@ -43,41 +43,25 @@ Navigate, seek cover behind giant soda cans/cereal boxes (which can be dynamical
 
 ## 📂 Project Structure & Architecture
 
-Here is a breakdown of the key files in the repository:
-
-```
-├── .github/                  # GitHub workflows / configuration
-├── Dockerfile.dev            # Development Dockerfile based on Node 26-Alpine
-├── docker-compose.yml        # Docker Compose setup for volume mounts & hot-reload
-├── index.html                # Core HTML file containing game layouts, HUD, & overlays
-├── package.json              # Scripts and package dependencies (three, cannon-es, vite, vitest)
-├── vite.config.js            # Vite configurations (port 5173, hot-reload, polling)
-├── AGENTS.md                 # AI Agent engineering policies, documentation rules, HITL protocol
-├── tests/
-│   ├── config.test.js        # Config invariant tests (gravity, spawn heights, constants)
-│   ├── level.test.js         # LevelManager load/unload and mesh factory tests
-│   └── physics.test.js       # Physics body creation, spawn positions, soft height cap tests
-└── src/
-    ├── config.js             # Centralized game configuration (world constants, player, weapon, NPC)
-    ├── main.js               # Game lifecycle, controls setup, projectile logic, & rendering loop
-    ├── style.css             # Custom stylesheets (glassmorphism UI & fonts)
-    ├── level/
-    │   ├── KitchenLevel.js   # Pure data: level layout array (types, positions, sizes)
-    │   └── LevelManager.js   # Level engine: iterates layout data, spawns meshes + physics bodies
-    ├── render/
-    │   └── models/
-    │       ├── BroccoliModel.js    # Factory: Broccoli Boy character group w/ shadow traverse
-    │       ├── CarrotModel.js      # Factory: Carrot Cartel character group w/ shadow traverse
-    │       ├── CounterDeckModel.js # Factory: structural counter deck mesh + static body
-    │       ├── SodaCanModel.js     # Factory: soda can mesh (module-level cached geo & mat)
-    │       └── CerealBoxModel.js   # Factory: cereal box mesh (module-level cached mat)
-    ├── npc/
-    │   ├── AGENTS.md         # NPC-specific agent rules (spawn, hover, FSM, lifecycle)
-    │   └── NpcEngine.js      # Faction details (Broccoli & Carrot classes), AI FSM, & behavior
-    └── physics/
-        ├── AGENTS.md         # Physics-specific agent rules (gravity, collisions, boundaries)
-        └── PhysicsWorld.js   # Physics world initialization, body builders, & mesh syncing
-```
+| Category | Component / Path | Description |
+| :--- | :--- | :--- |
+| **Core Application** | `src/main.js` | Main game loop, player controls, state management. |
+| | `src/config.js` | Central configuration values (physics, entities, sandbox). |
+| | `src/style.css` | UI styling using CSS variables and glassmorphism. |
+| | `index.html` | Core UI structure, HUD, overlays. |
+| **Level Generation** | `src/level/LevelManager.js` | Spawns procedural geometry based on configuration layout. |
+| | `src/level/KitchenLevel.js` | Layout declarations and environmental data constraints. |
+| | `src/level/PowerUpManager.js` | Dynamic floating collectibles. |
+| **Physics** | `src/physics/PhysicsWorld.js` | Cannon-es world setup, collisions, physics ticking. |
+| | `src/physics/AGENTS.md` | Physics-specific agent rules (gravity, collisions, boundaries). |
+| **NPC / AI** | `src/npc/NpcEngine.js` | AI state machines (Broccoli, Carrot), faction behaviors. |
+| | `src/npc/AGENTS.md` | NPC-specific agent rules (spawn, hover, FSM, lifecycle). |
+| **Rendering** | `src/render/models/` | Procedural 3D Three.js mesh generation (No external GLTF assets). |
+| **Testing** | `tests/` | Vitest suites spanning physics, loading, components. |
+| **Documentation** | `docs/performance.md` | In-depth technical review of GC optimization methods. |
+| | `AGENTS.md` | Human-in-the-loop and coding conventions for autonomous agents. |
+| **Build & Deploy** | `vite.config.js` | Development and bundle tooling. |
+| | `Dockerfile.dev`, `docker-compose.yml` | Sandboxed execution environments. |
 
 ---
 

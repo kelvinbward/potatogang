@@ -4,7 +4,7 @@ import { PhysicsWorld } from './physics/PhysicsWorld.js';
 import { NpcEngine } from './npc/NpcEngine.js';
 import { LevelManager } from './level/LevelManager.js';
 import { PowerUpManager } from './level/PowerUpManager.js';
-import { CONFIG } from './config.js';
+import { CONFIG, logDebug } from './config.js';
 import { GUI } from 'lil-gui';
 import { supabase } from './supabaseClient.js';
 
@@ -289,16 +289,16 @@ class Game {
       { x: 12, y: carrotY, z: -12 }
     ];
 
-    console.log(`[Game] Spawning new wave: ${broccoliSpawns.length} Broccoli, ${carrotSpawns.length} Carrots`);
+    logDebug(`[Game] Spawning new wave: ${broccoliSpawns.length} Broccoli, ${carrotSpawns.length} Carrots`);
 
     broccoliSpawns.forEach(pos => {
       this.npcEngine.spawnBroccoli(pos);
-      console.log(`[Game] Spawned Broccoli at {x: ${pos.x.toFixed(2)}, y: ${pos.y.toFixed(2)}, z: ${pos.z.toFixed(2)}}`);
+      logDebug(`[Game] Spawned Broccoli at {x: ${pos.x.toFixed(2)}, y: ${pos.y.toFixed(2)}, z: ${pos.z.toFixed(2)}}`);
     });
 
     carrotSpawns.forEach(pos => {
       this.npcEngine.spawnCarrot(pos);
-      console.log(`[Game] Spawned Carrot at {x: ${pos.x.toFixed(2)}, y: ${pos.y.toFixed(2)}, z: ${pos.z.toFixed(2)}}`);
+      logDebug(`[Game] Spawned Carrot at {x: ${pos.x.toFixed(2)}, y: ${pos.y.toFixed(2)}, z: ${pos.z.toFixed(2)}}`);
     });
   }
 
@@ -445,6 +445,7 @@ class Game {
 
     // 1. Sandbox Folder
     const sandboxFolder = this.gui.addFolder('Sandbox');
+    sandboxFolder.add(CONFIG.sandbox, 'debugLogging').name('Debug Logging');
     sandboxFolder.add(CONFIG.sandbox, 'spawnBroccoli').name('Spawn Broccoli (Front)');
     sandboxFolder.add(CONFIG.sandbox, 'spawnCarrot').name('Spawn Carrot (Front)');
     sandboxFolder.add(CONFIG.sandbox, 'clearAllNPCs').name('Clear All Enemies');
@@ -513,6 +514,7 @@ class Game {
       this.ammo--;
       this.updateAmmoUI();
     }
+    logDebug(`[Game] Player fired projectile. Ammo remaining: ${this.ammo}`);
 
     // 1. Calculate camera launch vector
     const direction = new THREE.Vector3();
@@ -631,6 +633,8 @@ class Game {
 
   playerTakeDamage(amount) {
     if (this.isGameOver || CONFIG.player.godMode) return;
+
+    logDebug(`[Game] Player took ${amount} damage.`);
 
     this.health = Math.max(0, this.health - amount);
     this.updateHUD();
