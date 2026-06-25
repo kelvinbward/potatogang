@@ -727,7 +727,7 @@ class Game {
     
     // Recreate only if maxAmmo changed or dots list is empty/mismatched
     if (dots.length !== this.maxAmmo) {
-      container.innerHTML = '';
+      container.replaceChildren();
       for (let i = 0; i < this.maxAmmo; i++) {
         const dot = document.createElement('div');
         container.appendChild(dot);
