@@ -777,7 +777,7 @@ class Game {
       ]);
 
     if (error) {
-      console.error('Error submitting score:', error);
+      console.error('Error submitting score. Please try again later.');
       this.submitScoreBtn.disabled = false;
       this.submitScoreBtn.innerText = 'SUBMIT';
     } else {
@@ -798,7 +798,7 @@ class Game {
       .limit(10);
 
     if (error) {
-      console.error('Error fetching leaderboard:', error);
+      console.error('Error fetching leaderboard. Please try again later.');
       this.leaderboardList.innerHTML = '<li style="color: red;">Error loading scores</li>';
       return;
     }
