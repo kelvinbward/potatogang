@@ -36,17 +36,45 @@ export function createBroccoliModel() {
   sphere3.scale.set(0.85, 0.85, 0.85);
   group.add(sphere3);
 
-  // --- Angry eyes ---
-  const eyeGeo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
-  const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+  // --- Eyes (Default state) ---
+  const eyeGeo = new THREE.BoxGeometry(0.1, 0.08, 0.08);
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const pupilGeo = new THREE.BoxGeometry(0.04, 0.04, 0.04);
+  const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
 
   const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
   leftEye.position.set(-0.25, 0.35, 0.45);
+  leftEye.name = 'leftEye';
   group.add(leftEye);
+
+  const leftPupil = new THREE.Mesh(pupilGeo, pupilMat);
+  leftPupil.position.set(-0.25, 0.35, 0.49);
+  leftPupil.name = 'leftPupil';
+  group.add(leftPupil);
 
   const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
   rightEye.position.set(0.25, 0.35, 0.45);
+  rightEye.name = 'rightEye';
   group.add(rightEye);
+
+  const rightPupil = new THREE.Mesh(pupilGeo, pupilMat);
+  rightPupil.position.set(0.25, 0.35, 0.49);
+  rightPupil.name = 'rightPupil';
+  group.add(rightPupil);
+
+  // --- Eyebrows (Default state) ---
+  const browGeo = new THREE.BoxGeometry(0.15, 0.03, 0.03);
+  const browMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+
+  const leftBrow = new THREE.Mesh(browGeo, browMat);
+  leftBrow.position.set(-0.25, 0.42, 0.47);
+  leftBrow.name = 'leftBrow';
+  group.add(leftBrow);
+
+  const rightBrow = new THREE.Mesh(browGeo, browMat);
+  rightBrow.position.set(0.25, 0.42, 0.47);
+  rightBrow.name = 'rightBrow';
+  group.add(rightBrow);
 
   // Apply shadow properties to all child meshes
   group.traverse((child) => {

@@ -21,7 +21,9 @@ NPCs use earth-gravity physics with **spring-force height maintenance** to stay 
   3. Damps vertical velocity to prevent oscillation.
 * **`targetHoverY`**: Set at spawn time to the NPC's initial Y position (ground level).
 * **Do not** use constant gravity multipliers (e.g., `gravityForce * 1.04`) as these cause cumulative drift.
-* **Do not** apply vertical chase forces. Horizontal movement only on XZ plane; vertical is handled by the hover spring.
+* **Exceptions to Vertical Movement (Jumping/Jetpack)**:
+  - NPCs are allowed to apply vertical impulses/forces to overcome obstacles or reach a high ground player during the CHASE state.
+  - When doing so, they **must** temporarily bypass the `_applyHoverForce()` spring. This is managed by `hoverBypassTimer`. If `hoverBypassTimer > 0`, `_applyHoverForce` returns early, yielding to jump/boost physics.
 
 ---
 
