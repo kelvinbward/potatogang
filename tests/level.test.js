@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import * as THREE from 'three';
 import { createBroccoliModel } from '../src/render/models/BroccoliModel.js';
 import { createCarrotModel } from '../src/render/models/CarrotModel.js';
@@ -204,6 +204,44 @@ describe('LevelManager', () => {
     manager.loadLevel();
 
     expect(manager.envMeshes.length).toBe(expectedScatterCount + fixedCount);
+  });
+
+  it('should handle unknown obstacle types gracefully', async () => {
+    // Reset module registry so our doMock takes effect for LevelManager
+    vi.resetModules();
+
+    // Create a malformed array mimicking KITCHEN_LEVEL
+    const malformedLevel = [
+      {
+        type: 'invalid_type_123',
+        pos: { x: 0, y: 0, z: 0 },
+        size: { x: 1, y: 1, z: 1 }
+      }
+    ];
+
+    // Mock the static import
+    vi.doMock('../src/level/KitchenLevel.js', () => ({
+      KITCHEN_LEVEL: malformedLevel
+    }));
+
+    // Dynamically import LevelManager AFTER the mock is in place
+    const { LevelManager: MockedLevelManager } = await import('../src/level/LevelManager.js');
+
+    const scene = new MockScene();
+    const physicsWorld = new PhysicsWorld();
+    const manager = new MockedLevelManager(scene, physicsWorld);
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      manager.loadLevel();
+      expect(warnSpy).toHaveBeenCalledWith('[LevelManager] Unknown obstacle type: "invalid_type_123"');
+    } finally {
+      warnSpy.mockRestore();
+      // Clean up module mocks for subsequent tests
+      vi.doUnmock('../src/level/KitchenLevel.js');
+      vi.resetModules();
+    }
   });
 });
 
