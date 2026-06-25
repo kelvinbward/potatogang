@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   build-and-deploy:
+    environment: github-pages
     concurrency: ci-${{ github.ref }}
     runs-on: ubuntu-latest
     steps:
