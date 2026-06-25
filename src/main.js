@@ -762,10 +762,6 @@ class Game {
 
   async submitHighScore() {
     if (!this.playerNameInput || !this.submitScoreBtn) return;
-    if (!supabase) {
-      console.warn('Supabase not configured. Score submission disabled.');
-      return;
-    }
 
     const playerName = this.playerNameInput.value.trim();
     if (!playerName) return;
@@ -792,10 +788,6 @@ class Game {
 
   async fetchLeaderboard() {
     if (!this.leaderboardList) return;
-    if (!supabase) {
-      this.leaderboardList.innerHTML = '<li style="color: var(--text-secondary);">Leaderboard unavailable (configuration missing)</li>';
-      return;
-    }
 
     this.leaderboardList.innerHTML = '<li>Loading...</li>';
 
