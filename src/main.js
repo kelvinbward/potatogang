@@ -60,6 +60,7 @@ class Game {
     // Raycast target detection
     this.raycaster = new THREE.Raycaster();
     this.centerScreen = new THREE.Vector2(0, 0);
+    this.activeEnemyMeshes = [];
 
     // Timing
     this.timer = new THREE.Timer();
@@ -1115,12 +1116,16 @@ class Game {
     this.raycaster.setFromCamera(this.centerScreen, this.camera);
     
     // Retrieve all active enemy meshes
-    const enemyVisuals = this.npcEngine.npcs
-      .filter(npc => npc.state !== 'DEAD')
-      .map(npc => npc.mesh);
+    this.activeEnemyMeshes.length = 0;
+    const npcs = this.npcEngine.npcs;
+    for (let i = 0; i < npcs.length; i++) {
+      if (npcs[i].state !== 'DEAD') {
+        this.activeEnemyMeshes.push(npcs[i].mesh);
+      }
+    }
 
     // Deep checks inside groups
-    const intersects = this.raycaster.intersectObjects(enemyVisuals, true);
+    const intersects = this.raycaster.intersectObjects(this.activeEnemyMeshes, true);
 
     if (intersects.length > 0) {
       // Enemy hovered, color red/orange
