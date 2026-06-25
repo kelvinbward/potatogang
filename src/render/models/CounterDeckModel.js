@@ -11,10 +11,12 @@ import { CONFIG } from '../../config.js';
  * @param {THREE.Scene} scene - The Three.js scene to add the deck mesh to.
  * @param {import('../../physics/PhysicsWorld.js').PhysicsWorld} physicsWorld
  *   - The physics world to register the static collision body in.
- * @returns {{ mesh: THREE.Mesh, body: import('cannon-es').Body }}
- *   References to the created visual mesh and physics body.
+ * @returns {THREE.Group} A fully configured group ready to add to a scene, plus attaching body to it.
  */
 export function createCounterDeck(scene, physicsWorld) {
+  const deckGroup = new THREE.Group();
+  deckGroup.name = 'CounterDeck';
+
   const deckThickness = 2;
   const deckCenterY = CONFIG.world.GROUND_Y - deckThickness / 2;
 
@@ -29,7 +31,9 @@ export function createCounterDeck(scene, physicsWorld) {
   deckMesh.position.set(0, deckCenterY, 0);
   deckMesh.receiveShadow = true;
   deckMesh.castShadow = true;
-  scene.add(deckMesh);
+  deckGroup.add(deckMesh);
+
+  scene.add(deckGroup);
 
   // Corresponding Cannon-es static body
   const deckBody = physicsWorld.createStaticBox(
@@ -37,5 +41,8 @@ export function createCounterDeck(scene, physicsWorld) {
     { x: 120, y: deckThickness, z: 120 }
   );
 
-  return { mesh: deckMesh, body: deckBody };
+  // Attach body to group for consistency
+  deckGroup.userData.body = deckBody;
+
+  return deckGroup;
 }
