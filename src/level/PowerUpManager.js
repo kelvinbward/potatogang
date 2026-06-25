@@ -272,7 +272,7 @@ export class PowerUpManager {
     }
 
     this.powerups.push({
-      id: `temp_${Date.now()}_${Math.random()}`,
+      id: `temp_${crypto.randomUUID()}`,
       type: type,
       color: color,
       basePos: spawnPos.clone(),
