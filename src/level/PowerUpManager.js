@@ -152,7 +152,7 @@ export class PowerUpManager {
         // Reset back to status message after 2.5 seconds
         if (this.hudTimeout) clearTimeout(this.hudTimeout);
         this.hudTimeout = setTimeout(() => {
-          msgElement.innerText = "TACTICAL KITCHEN ARENA — STAY GROUNDED";
+          msgElement.innerText = `WAVE ${this.game.wave}`;
         }, 2500);
       }
     }

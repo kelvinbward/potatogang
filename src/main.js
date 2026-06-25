@@ -30,6 +30,7 @@ class Game {
     this.maxHealth = CONFIG.player.maxHealth;
     this.score = 0;
     this.kills = 0;
+    this.wave = 1;
     this.ammo = CONFIG.weapon.maxAmmo;
     this.maxAmmo = CONFIG.weapon.maxAmmo;
     this.lastAmmoRegenTime = 0;
@@ -695,7 +696,8 @@ class Game {
         this.spawnEnemies();
         document.getElementById('hud-message').innerText = "WAVE COMPLETED! NEW THREATS INCOMING...";
         setTimeout(() => {
-          document.getElementById('hud-message').innerText = "TACTICAL KITCHEN ARENA — STAY GROUNDED";
+          this.wave++;
+          document.getElementById('hud-message').innerText = `WAVE ${this.wave}`;
         }, 3000);
       }, 1500);
     }
@@ -854,6 +856,7 @@ class Game {
     this.health = CONFIG.player.maxHealth;
     this.score = 0;
     this.kills = 0;
+    this.wave = 1;
     this.ammo = CONFIG.weapon.maxAmmo;
     this.isGameOver = false;
 
@@ -862,6 +865,8 @@ class Game {
     this.isGrounded = true;
     this.canDoubleJump = false;
     this.hasDoubleJumped = false;
+
+    document.getElementById('hud-message').innerText = `WAVE ${this.wave}`;
 
     this.updateHUD();
     this.updateAmmoUI();
