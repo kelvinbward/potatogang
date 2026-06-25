@@ -95,3 +95,8 @@ To minimize context and maintain developer focus, folder-specific rules are deco
 * **NPC system details**: Refer to [src/npc/AGENTS.md](./src/npc/AGENTS.md) for spawn rules, hover mechanics, FSM invariants, and lifecycle rules.
 * **Level layout data**: All obstacle and power-up spawn coordinates, colors, and types belong exclusively in `src/level/KitchenLevel.js`. The level engines (`src/level/LevelManager.js` and `src/level/PowerUpManager.js`) are the sole consumers.
 * **Render model factories**: All mesh construction (for static obstacles, NPCs, and power-ups) belongs in `src/render/models/`. Each factory returns a fully configured `THREE.Group` or `THREE.Mesh`. Inline primitive construction in orchestration files (`main.js`, `NpcEngine.js`) is prohibited.
+
+## 🚀 7. Performance & Optimization Rules
+* **Zero GC Hot Paths**: Never instantiate objects (`new THREE.Vector3()`, `new CANNON.Vec3()`, etc.) inside `update()`, `render()`, or physics tick loops. This generates garbage collection stutter.
+  - **Pattern**: Pre-allocate required vectors/quaternions as class properties in the constructor (e.g., `this._moveDirection = new THREE.Vector3()`) and mutate them in-place using `.set()`, `.copy()`, or `.applyAxisAngle()`.
+  - Reference: See `docs/performance.md` for benchmarks and examples.
