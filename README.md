@@ -194,3 +194,23 @@ This project follows a **Documentation-as-a-Deliverable** policy. See [AGENTS.md
 ## ⚡ Technical Implementations of Interest (Continued)
 
 *   **Zero GC Hot Paths**: To maintain a buttery smooth 60+ FPS, all `THREE.Vector3` and `CANNON.Vec3` instances required for per-frame physics or render calculations are pre-allocated in class constructors. Instead of creating new objects every frame (which triggers costly Garbage Collection pauses), these vectors are reset and mutated in place using `.set()`. This eliminates GC stutter in the critical game loop and improves raw calculation speed by ~23%.
+
+## 📚 Project Structure
+
+| Category | Component / Path | Description |
+| :--- | :--- | :--- |
+| **Core Application** | `src/main.js` | Main game loop, player controls, state management. |
+| | `src/config.js` | Central configuration values (physics, entities, sandbox). |
+| | `src/style.css` | UI styling using CSS variables and glassmorphism. |
+| | `index.html` | Core UI structure, HUD, overlays. |
+| **Level Generation** | `src/level/LevelManager.js` | Spawns procedural geometry based on configuration layout. |
+| | `src/level/KitchenLevel.js` | Layout declarations and environmental data constraints. |
+| | `src/level/PowerUpManager.js` | Dynamic floating collectibles. |
+| **Physics** | `src/physics/PhysicsWorld.js` | Cannon-es world setup, collisions, physics ticking. |
+| **NPC / AI** | `src/npc/NpcEngine.js` | AI state machines (Broccoli, Carrot), faction behaviors. |
+| **Rendering** | `src/render/models/` | Procedural 3D Three.js mesh generation (No external GLTF assets). |
+| **Testing** | `tests/` | Vitest suites spanning physics, loading, components. |
+| **Documentation** | `docs/performance.md` | In-depth technical review of GC optimization methods. |
+| | `AGENTS.md` | Human-in-the-loop and coding conventions for autonomous agents. |
+| **Build & Deploy** | `vite.config.js` | Development and bundle tooling. |
+| | `Dockerfile.dev`, `docker-compose.yml` | Sandboxed execution environments. |
