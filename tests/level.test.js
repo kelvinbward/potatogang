@@ -8,6 +8,7 @@ import { KITCHEN_LEVEL } from '../src/level/KitchenLevel.js';
 import { LevelManager } from '../src/level/LevelManager.js';
 import { PhysicsWorld } from '../src/physics/PhysicsWorld.js';
 import { CONFIG } from '../src/config.js';
+import { createCounterDeck } from '../src/render/models/CounterDeckModel.js';
 
 // ─── Mock minimal Three.js scene ──────────────────────────────────────────────
 class MockScene {
@@ -306,3 +307,59 @@ describe('LevelManager AABB exclusion zones', () => {
   });
 });
 
+
+// ─── CounterDeckModel factory ────────────────────────────────────────────────
+describe('CounterDeckModel factory', () => {
+  it('should return a THREE.Group with correct structure', () => {
+    const scene = new MockScene();
+    const physicsWorld = new PhysicsWorld();
+    const group = createCounterDeck(scene, physicsWorld);
+
+    expect(group).toBeInstanceOf(THREE.Group);
+    expect(group.name).toBe('CounterDeck');
+    expect(group.children.length).toBeGreaterThan(0);
+
+    const deckMesh = group.children[0];
+    expect(deckMesh).toBeInstanceOf(THREE.Mesh);
+    expect(deckMesh.geometry).toBeInstanceOf(THREE.BoxGeometry);
+  });
+
+  it('should add the group to the scene', () => {
+    const scene = new MockScene();
+    const physicsWorld = new PhysicsWorld();
+    const group = createCounterDeck(scene, physicsWorld);
+
+    expect(scene.objects).toContain(group);
+  });
+
+  it('should have castShadow and receiveShadow on the child mesh', () => {
+    const scene = new MockScene();
+    const physicsWorld = new PhysicsWorld();
+    const group = createCounterDeck(scene, physicsWorld);
+
+    const deckMesh = group.children[0];
+    expect(deckMesh.castShadow).toBe(true);
+    expect(deckMesh.receiveShadow).toBe(true);
+  });
+
+  it('should use the correct position based on CONFIG.world.GROUND_Y', () => {
+    const scene = new MockScene();
+    const physicsWorld = new PhysicsWorld();
+    const group = createCounterDeck(scene, physicsWorld);
+
+    const deckThickness = 2;
+    const expectedY = CONFIG.world.GROUND_Y - deckThickness / 2;
+
+    const deckMesh = group.children[0];
+    expect(deckMesh.position.y).toBe(expectedY);
+  });
+
+  it('should create a body with mass 0 (static) and attach to userData', () => {
+    const scene = new MockScene();
+    const physicsWorld = new PhysicsWorld();
+    const group = createCounterDeck(scene, physicsWorld);
+
+    expect(group.userData.body).toBeDefined();
+    expect(group.userData.body.mass).toBe(0);
+  });
+});
