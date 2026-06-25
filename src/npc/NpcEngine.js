@@ -368,7 +368,10 @@ export class NpcEngine {
     for (let i = this.npcs.length - 1; i >= 0; i--) {
       const npc = this.npcs[i];
       if (npc.state === NPC_STATES.DEAD) {
-        this.npcs.splice(i, 1);
+        const last = this.npcs.pop();
+        if (i < this.npcs.length) {
+          this.npcs[i] = last;
+        }
         continue;
       }
       npc.update(deltaTime, playerPosition, onNpcShoot);
