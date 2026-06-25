@@ -764,7 +764,8 @@ class Game {
     if (!this.playerNameInput || !this.submitScoreBtn) return;
 
     const playerName = this.playerNameInput.value.trim();
-    if (!playerName) return;
+    if (!playerName || playerName.length > 15) return;
+    if (!/^[a-zA-Z0-9_ ]+$/.test(playerName)) return;
 
     // Prevent double clicking
     this.submitScoreBtn.disabled = true;
@@ -777,7 +778,7 @@ class Game {
       ]);
 
     if (error) {
-      console.error('Error submitting score:', error);
+      console.error('Error submitting score. Please try again later.');
       this.submitScoreBtn.disabled = false;
       this.submitScoreBtn.innerText = 'SUBMIT';
     } else {
@@ -808,7 +809,7 @@ class Game {
       .limit(10);
 
     if (error) {
-      console.error('Error fetching leaderboard:', error);
+      console.error('Error fetching leaderboard. Please try again later.');
       const errorLi = document.createElement('li');
       errorLi.textContent = 'Error loading scores';
       errorLi.style.color = 'red';
