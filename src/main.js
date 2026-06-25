@@ -792,7 +792,17 @@ class Game {
   async fetchLeaderboard() {
     if (!this.leaderboardList) return;
 
-    this.leaderboardList.innerHTML = '<li>Loading...</li>';
+    if (!supabase) {
+      const errorLi = document.createElement('li');
+      errorLi.textContent = 'Leaderboard unavailable (configuration missing)';
+      errorLi.style.color = 'var(--text-secondary)';
+      this.leaderboardList.replaceChildren(errorLi);
+      return;
+    }
+
+    const loadingLi = document.createElement('li');
+    loadingLi.textContent = 'Loading...';
+    this.leaderboardList.replaceChildren(loadingLi);
 
     const { data, error } = await supabase
       .from('high_scores')
@@ -802,11 +812,14 @@ class Game {
 
     if (error) {
       console.error('Error fetching leaderboard. Please try again later.');
-      this.leaderboardList.innerHTML = '<li style="color: red;">Error loading scores</li>';
+      const errorLi = document.createElement('li');
+      errorLi.textContent = 'Error loading scores';
+      errorLi.style.color = 'red';
+      this.leaderboardList.replaceChildren(errorLi);
       return;
     }
 
-    this.leaderboardList.innerHTML = '';
+    this.leaderboardList.replaceChildren();
 
     if (data && data.length > 0) {
       data.forEach((entry, index) => {
@@ -817,10 +830,10 @@ class Game {
         li.style.borderBottom = '1px solid rgba(57, 255, 20, 0.2)';
 
         const rankName = document.createElement('span');
-        rankName.innerText = `${index + 1}. ${entry.player_name}`;
+        rankName.textContent = `${index + 1}. ${entry.player_name}`;
 
         const scoreSpan = document.createElement('span');
-        scoreSpan.innerText = entry.score;
+        scoreSpan.textContent = entry.score;
         scoreSpan.style.color = 'var(--neon-green)';
 
         li.appendChild(rankName);
@@ -828,7 +841,9 @@ class Game {
         this.leaderboardList.appendChild(li);
       });
     } else {
-      this.leaderboardList.innerHTML = '<li>No scores yet!</li>';
+      const emptyLi = document.createElement('li');
+      emptyLi.textContent = 'No scores yet!';
+      this.leaderboardList.replaceChildren(emptyLi);
     }
   }
 
