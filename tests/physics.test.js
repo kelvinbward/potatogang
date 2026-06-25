@@ -9,6 +9,12 @@ describe('PhysicsWorld initialization and bodies', () => {
     expect(physicsWorld.world.gravity.y).toBe(-9.8);
   });
 
+  it('should update gravity correctly', () => {
+    const physicsWorld = new PhysicsWorld();
+    physicsWorld.updateGravity(20);
+    expect(physicsWorld.world.gravity.y).toBe(-20);
+  });
+
   it('should create player body with correct filters and properties', () => {
     const physicsWorld = new PhysicsWorld();
     const playerBody = physicsWorld.createPlayerBody({ x: 0, y: 5, z: 0 }, 0.85);
