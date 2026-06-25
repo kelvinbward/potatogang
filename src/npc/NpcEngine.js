@@ -43,6 +43,9 @@ export class BaseNpc {
 
     // Track previous state for damping transitions
     this._previousState = NPC_STATES.IDLE;
+
+    // Pre-allocated vector to avoid GC pressure in update loop
+    this._toPlayer = new THREE.Vector3();
   }
 
   takeDamage(amount, hitPoint, hitDirection) {
@@ -183,10 +186,10 @@ export class BaseNpc {
     }
 
     const distanceToPlayer = this.mesh.position.distanceTo(playerPos);
-    const toPlayer = new THREE.Vector3().subVectors(playerPos, this.mesh.position);
+    this._toPlayer.subVectors(playerPos, this.mesh.position);
     
     // Turn towards player (yaw only)
-    const yaw = Math.atan2(toPlayer.x, toPlayer.z);
+    const yaw = Math.atan2(this._toPlayer.x, this._toPlayer.z);
     this.mesh.rotation.y = yaw;
 
     // Simple FSM transition logic
@@ -199,7 +202,7 @@ export class BaseNpc {
         break;
 
       case NPC_STATES.CHASE:
-        this.updateChase(deltaTime, toPlayer);
+        this.updateChase(deltaTime, this._toPlayer);
         if (distanceToPlayer > this.chaseRange + 4) {
           this.state = NPC_STATES.IDLE;
         } else if (distanceToPlayer < this.attackRange) {
@@ -208,7 +211,7 @@ export class BaseNpc {
         break;
 
       case NPC_STATES.ATTACK:
-        this.updateAttack(deltaTime, toPlayer, onNpcShoot);
+        this.updateAttack(deltaTime, this._toPlayer, onNpcShoot);
         if (distanceToPlayer > this.attackRange + 2) {
           this.state = NPC_STATES.CHASE;
         }
