@@ -133,6 +133,17 @@ Perfect for sandboxed environments or cross-platform hot-reload safety:
 *   **AABB Scatter Exclusion Zones**: `LevelManager._spawnScatter()` generates XZ exclusion rectangles from every fixed obstacle footprint (padded by scatter item half-width + 1.5u), all previously spawned scatter items across different types, and the player safe zone. Scatter items retry position generation up to 50×. If a safe spot still cannot be found, the item skips spawning instead of forcing placement — completely eliminating overlaps and ensuring cereal boxes and soda cans never spawn inside counter slabs or each other.
 *   **Live Remaining Enemies Counter**: The HUD top-right panel displays a real-time `REMAINING: N` counter updated every `updateHUD()` tick via `npcEngine.npcs.filter(state !== 'DEAD').length`. Players can see exactly how many enemies stand between them and the next wave.
 *   **Debug Clear + Auto-Respawn**: The "Clear All Enemies" sandbox button silently kills all NPCs (no score awarded) then triggers `spawnEnemies()` after 1.5 seconds when Wave Spawning is enabled — matching the natural wave-transition feel.
+*   **Global High Score System**: A Supabase integration handles high score tracking. On the "Game Over" screen, players can submit their name to a global leaderboard alongside their score and kill count. The system fetches and dynamically displays the Top 10 entries.
+
+---
+
+## 🔑 Environment Variables
+This project requires environment variables to enable the global leaderboard. Add a `.env` file to the root of the project with the following keys from your Supabase project:
+```
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+If these are missing, the global leaderboard will gracefully disable itself with a warning in the console.
 
 ---
 
