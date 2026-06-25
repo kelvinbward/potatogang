@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Potato Gang: Kitchen Arena</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="/potatogang/assets/index-Dfrf830V.js"></script>
+  <link rel="stylesheet" crossorigin href="/potatogang/assets/index-DX23haTp.css">
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <!-- UI Overlay for Game Info (HUD) -->
+    <div id="hud" class="hidden">
+        <div class="hud-top-left glass">
+            <div class="hud-stat">
+                <span class="label">HP</span>
+                <div class="bar-container"><div id="health-bar" style="width: 100%;"></div></div>
+                <span id="health-text" class="value">100</span>
+            </div>
+            <div class="hud-stat">
+                <span class="label">BOOST</span>
+                <div class="bar-container"><div id="jetpack-bar" style="width: 100%;"></div></div>
+                <span id="jetpack-text" class="value">100</span>
+            </div>
+            <div class="hud-stat">
+                <span class="label">STAMINA</span>
+                <div class="bar-container"><div id="stamina-bar" style="width: 100%;"></div></div>
+                <span id="stamina-text" class="value">100</span>
+            </div>
+            <div class="hud-stat">
+                <span class="label">AMMO</span>
+                <div class="ammo-dots" id="ammo-dots"></div>
+                <span id="ammo-text" class="value">10 / 10</span>
+            </div>
+        </div>
+        
+        <div class="hud-top-right glass">
+            <div class="hud-stat">
+                <span class="label">SCORE</span>
+                <span id="score" class="value monospace">00000</span>
+            </div>
+            <div class="hud-stat">
+                <span class="label">DEFEATED</span>
+                <span id="kills" class="value monospace">0</span>
+            </div>
+            <div class="hud-stat">
+                <span class="label">REMAINING</span>
+                <span id="remaining" class="value monospace">0</span>
+            </div>
+        </div>
+
+        <div class="hud-bottom glass">
+            <div class="hud-message" id="hud-message">TACTICAL KITCHEN ARENA — STAY GROUNDED</div>
+        </div>
+
+        <!-- Crosshair in the absolute center -->
+        <div id="crosshair">
+            <div class="crosshair-ring"></div>
+            <div class="crosshair-dot"></div>
+        </div>
+    </div>
+
+    <!-- PointerLock Blocker Overlay -->
+    <div id="blocker">
+        <div id="instructions" class="glass">
+            <h1 class="game-title">POTATO GANG</h1>
+            <p class="game-subtitle">HIGH-OCTANE TACTICAL KITCHEN ARENA</p>
+            <div class="instructions-grid">
+                <div class="instruction-item">
+                    <span class="key">WASD</span>
+                    <span class="desc">Walk / Run (Grounded)</span>
+                </div>
+                <div class="instruction-item">
+                    <span class="key">SPACE</span>
+                    <span class="desc">Jump / Hold for Jetpack Boost</span>
+                </div>
+                <div class="instruction-item">
+                    <span class="key">SHIFT</span>
+                    <span class="desc">Sprint (Drains Stamina)</span>
+                </div>
+                <div class="instruction-item">
+                    <span class="key">CLICK</span>
+                    <span class="desc">Shoot Spuds</span>
+                </div>
+            </div>
+            <p class="click-to-play">CLICK TO ENTER THE KITCHEN ARENA</p>
+            <div class="faction-info">
+                <span>Threats: </span>
+                <span class="broccoli-tag">Broccoli Boys</span> & 
+                <span class="carrot-tag">Carrot Cartel</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="game-over" class="hidden">
+        <div class="glass game-over-box">
+            <h1 class="death-title">MASHED!</h1>
+            <p class="death-subtitle">You were processed into french fries.</p>
+            <div class="stats-summary">
+                <p>Score: <span id="final-score">0</span></p>
+                <p>Veggies Defeated: <span id="final-kills">0</span></p>
+            </div>
+
+            <!-- Global High Score Submission -->
+            <div id="score-submission" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <input type="text" id="player-name" placeholder="ENTER NAME" class="monospace" style="flex: 1; padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid var(--neon-blue); color: var(--text-primary); border-radius: 8px;" maxlength="15">
+                <button id="submit-score-btn" class="btn" style="padding: 10px 20px; font-size: 1rem;">SUBMIT</button>
+            </div>
+
+            <!-- Leaderboard -->
+            <div style="margin-bottom: 20px; text-align: left; background: rgba(0,0,0,0.3); border: 1px solid var(--neon-green); border-radius: 8px; padding: 10px;">
+                <h3 style="color: var(--neon-green); margin-bottom: 10px; text-align: center;" class="monospace">TOP SPUDS</h3>
+                <ul id="leaderboard-list" class="monospace" style="list-style-type: none; padding: 0; margin: 0; font-size: 0.9rem; max-height: 150px; overflow-y: auto;">
+                    <!-- Scores dynamically inserted here -->
+                </ul>
+            </div>
+
+            <button id="restart-btn" class="btn">RE-SPAWN SPUD</button>
+        </div>
+    </div>
+
+</body>
+</html>
