@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CONFIG } from '../config.js';
+import { CONFIG, logDebug } from '../config.js';
 import { KITCHEN_LEVEL } from './KitchenLevel.js';
 import { createCounterDeck } from '../render/models/CounterDeckModel.js';
 import { createCerealBoxMesh } from '../render/models/CerealBoxModel.js';
@@ -44,13 +44,13 @@ export class LevelManager {
     this.unloadLevel();
     this.scatterObstacles = [];
 
-    console.log('[LevelManager] Beginning level load...');
+    logDebug('[LevelManager] Beginning level load...');
 
     // 1. Build the structural counter deck (permanent base platform)
     createCounterDeck(this.scene, this.physicsWorld);
     // Note: deck is not tracked in envMeshes/envBodies because it is a
     // permanent structural element and should never be unloaded mid-session.
-    console.log('[LevelManager] Structural counter deck created.');
+    logDebug('[LevelManager] Structural counter deck created.');
 
     // 2. Iterate layout data and spawn each entry
     let fixedCount = 0;
@@ -63,7 +63,7 @@ export class LevelManager {
       }
     });
 
-    console.log(`[LevelManager] Level load complete. Spawned ${fixedCount} fixed obstacles and ${this.scatterObstacles.length} scatter items.`);
+    logDebug(`[LevelManager] Level load complete. Spawned ${fixedCount} fixed obstacles and ${this.scatterObstacles.length} scatter items.`);
   }
 
   /**
@@ -108,7 +108,7 @@ export class LevelManager {
     const body = this.physicsWorld.createStaticBox(entry.pos, entry.size);
     this.envBodies.push(body);
 
-    console.log(`[LevelManager] Spawned fixed '${entry.type}' at {x: ${entry.pos.x.toFixed(2)}, y: ${entry.pos.y.toFixed(2)}, z: ${entry.pos.z.toFixed(2)}}`);
+    logDebug(`[LevelManager] Spawned fixed '${entry.type}' at {x: ${entry.pos.x.toFixed(2)}, y: ${entry.pos.y.toFixed(2)}, z: ${entry.pos.z.toFixed(2)}}`);
   }
 
   /**
@@ -155,7 +155,7 @@ export class LevelManager {
       const body = this.physicsWorld.createStaticBox(pos, entry.size);
       this.envBodies.push(body);
 
-      console.log(`[LevelManager] Spawned scatter '${entry.type}' at {x: ${pos.x.toFixed(2)}, y: ${pos.y.toFixed(2)}, z: ${pos.z.toFixed(2)}} after ${attempts} attempts`);
+      logDebug(`[LevelManager] Spawned scatter '${entry.type}' at {x: ${pos.x.toFixed(2)}, y: ${pos.y.toFixed(2)}, z: ${pos.z.toFixed(2)}} after ${attempts} attempts`);
 
       // Track globally for cross-type scatter avoidance
       this.scatterObstacles.push({ pos, size: entry.size });

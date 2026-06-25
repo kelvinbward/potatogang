@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { PhysicsWorld } from '../physics/PhysicsWorld.js';
-import { CONFIG } from '../config.js';
+import { CONFIG, logDebug } from '../config.js';
 import { createBroccoliModel } from '../render/models/BroccoliModel.js';
 import { createCarrotModel } from '../render/models/CarrotModel.js';
 
@@ -47,6 +47,8 @@ export class BaseNpc {
 
   takeDamage(amount, hitPoint, hitDirection) {
     if (this.state === NPC_STATES.DEAD) return;
+
+    logDebug(`[NpcEngine] ${this.faction} took ${amount} damage. Health: ${this.health - amount}`);
 
     this.health -= amount;
     this.flashRed();
@@ -149,6 +151,7 @@ export class BaseNpc {
   }
 
   die(silent = false) {
+    logDebug(`[NpcEngine] ${this.faction} died. Silent: ${silent}`);
     this.state = NPC_STATES.DEAD;
     if (!silent) {
       this.spawnDeathExplosion();
@@ -168,6 +171,7 @@ export class BaseNpc {
 
     // Handle linearDamping transitions between states
     if (this.state !== this._previousState) {
+      logDebug(`[NpcEngine] ${this.faction} state transitioned from ${this._previousState} to ${this.state}`);
       if (this.state === NPC_STATES.ATTACK) {
         this.body.linearDamping = 0.92; // High damping to stop drifting in attack stance
       } else {

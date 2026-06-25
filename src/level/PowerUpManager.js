@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CONFIG } from '../config.js';
+import { CONFIG, logDebug } from '../config.js';
 import { POWERUP_SPAWNS } from './KitchenLevel.js';
 import { createPowerUpModel } from '../render/models/PowerUpModel.js';
 
@@ -59,7 +59,7 @@ export class PowerUpManager {
         timeOffset: Math.random() * 100.0
       });
 
-      console.log(`[PowerUpManager] Spawned '${spawn.type}' power-up at {x: ${spawn.pos.x}, y: ${spawn.pos.y}, z: ${spawn.pos.z}}`);
+      logDebug(`[PowerUpManager] Spawned '${spawn.type}' power-up at {x: ${spawn.pos.x}, y: ${spawn.pos.y}, z: ${spawn.pos.z}}`);
     });
   }
 
@@ -171,7 +171,7 @@ export class PowerUpManager {
       }, 80);
     }
 
-    console.log(`[PowerUpManager] Collected ${powerup.type} power-up.`);
+    logDebug(`[PowerUpManager] Collected ${powerup.type} power-up.`);
 
     // If temporary loot, remove from scene and memory completely
     if (powerup.isTemporary) {
@@ -213,7 +213,7 @@ export class PowerUpManager {
       this.game.spawnImpactParticles(powerup.basePos, powerup.color);
     }
 
-    console.log(`[PowerUpManager] Respawned ${powerup.type} power-up.`);
+    logDebug(`[PowerUpManager] Respawned ${powerup.type} power-up.`);
   }
 
   /**
@@ -287,7 +287,7 @@ export class PowerUpManager {
       isTemporary: true
     });
 
-    console.log(`[PowerUpManager] Spawned dynamic loot '${type}' power-up (deficit selection) at {x: ${spawnPos.x.toFixed(2)}, y: ${spawnPos.y.toFixed(2)}, z: ${spawnPos.z.toFixed(2)}}`);
+    logDebug(`[PowerUpManager] Spawned dynamic loot '${type}' power-up (deficit selection) at {x: ${spawnPos.x.toFixed(2)}, y: ${spawnPos.y.toFixed(2)}, z: ${spawnPos.z.toFixed(2)}}`);
   }
 
   /**
