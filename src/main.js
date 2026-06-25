@@ -662,7 +662,7 @@ class Game {
 
     const particles = [];
     for (let i = 0; i < particlesCount; i++) {
-      const mesh = new THREE.Mesh(geo, mat.clone());
+      const mesh = new THREE.Mesh(geo, mat);
       mesh.position.copy(position);
 
       const velocity = new THREE.Vector3(
