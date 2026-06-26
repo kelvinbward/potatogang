@@ -35,6 +35,7 @@ class Game {
     this.maxAmmo = CONFIG.weapon.maxAmmo;
     this.lastAmmoRegenTime = 0;
     this.isGameOver = false;
+    this.currentWave = 0;
 
     // Jetpack / Jump state
     this.jetpackFuel = CONFIG.player.jetpackFuelCapacity;
@@ -54,7 +55,8 @@ class Game {
     this._yAxis = new THREE.Vector3(0, 1, 0);
 
     // Projectile tracking lists
-    this.projectiles = [];
+    this.projectilePool = [];
+    this.poolSize = 50;
     this.npcProjectiles = [];
 
     // Particle tracking lists
@@ -82,6 +84,7 @@ class Game {
     this.scoreText = document.getElementById('score');
     this.killsText = document.getElementById('kills');
     this.remainingText = document.getElementById('remaining');
+    this.waveText = document.getElementById('wave');
     this.finalScoreText = document.getElementById('final-score');
     this.finalKillsText = document.getElementById('final-kills');
     this.restartBtn = document.getElementById('restart-btn');
@@ -167,6 +170,9 @@ class Game {
     // 6. Build the Spud Launcher Weapon model
     this.buildWeapon();
 
+    // 6b. Pre-allocate player projectiles to prevent GC pausing
+    this.initProjectilePool();
+
     // 7. Create NPC Engine
     this.npcEngine = new NpcEngine(this.scene, this.physicsWorld);
 
@@ -191,6 +197,61 @@ class Game {
 
     // Start main game loop
     this.animate();
+  }
+
+  initProjectilePool() {
+    const radius = 0.2;
+    const projGeo = new THREE.SphereGeometry(radius, 6, 6);
+    projGeo.scale(1, 1, 2.5); // Wedge scale
+    const projMat = new THREE.MeshStandardMaterial({
+      color: 0xfacc15, // Golden potato color
+      emissive: 0xca8a04,
+      emissiveIntensity: 0.4,
+      metalness: 0.1,
+      roughness: 0.8
+    });
+
+    for (let i = 0; i < this.poolSize; i++) {
+      // Create hidden physics body
+      const velocity = new CANNON.Vec3(0, 0, 0);
+      const startPos = { x: 0, y: -100, z: 0 };
+      const body = this.physicsWorld.createProjectileBody(startPos, velocity, radius, false);
+
+      // Create visual mesh
+      const mesh = new THREE.Mesh(projGeo, projMat);
+      mesh.castShadow = true;
+      this.scene.add(mesh);
+
+      this.physicsWorld.registerSync(mesh, body);
+
+      const projectile = {
+        body,
+        mesh,
+        active: false,
+        life: 0,
+        direction: new THREE.Vector3()
+      };
+
+      // Collision listener
+      body.addEventListener('collide', (event) => {
+        if (!projectile.active) return;
+        const targetBody = event.body;
+
+        // If hit NPC, deal damage
+        if (targetBody.npcInstance) {
+          const hitDirection = projectile.direction.clone();
+          targetBody.npcInstance.takeDamage(CONFIG.weapon.projectileDamage, mesh.position, hitDirection);
+        }
+
+        // Small hit splat particles (golden energy/mashed potato crumbs)
+        this.spawnImpactParticles(mesh.position, 0xfacc15);
+
+        // Instantly schedule removal
+        projectile.life = 0;
+      });
+
+      this.projectilePool.push(projectile);
+    }
   }
 
   buildWeapon() {
@@ -273,6 +334,17 @@ class Game {
     this.npcEngine.clearAll();
     if (!CONFIG.npc.spawnEnabled) return;
 
+    this.currentWave++;
+
+    // Calculate wave modifiers
+    const wave = this.currentWave;
+    const progression = CONFIG.npc.waveProgression;
+    const modifiers = {
+      health: Math.pow(progression.healthMultiplier, wave - 1),
+      speed: Math.pow(progression.speedMultiplier, wave - 1),
+      fireRate: Math.max(0.1, 1.8 - (progression.fireRateReduction * (wave - 1)))
+    };
+
     // Derive NPC spawn heights from CONFIG.world.GROUND_Y
     const broccoliY = CONFIG.world.GROUND_Y + 0.85; // sphere radius
     const carrotY = CONFIG.world.GROUND_Y + 1.25;   // half cylinder height
@@ -290,15 +362,15 @@ class Game {
       { x: 12, y: carrotY, z: -12 }
     ];
 
-    logDebug(`[Game] Spawning new wave: ${broccoliSpawns.length} Broccoli, ${carrotSpawns.length} Carrots`);
+    logDebug(`[Game] Spawning new wave (Wave ${this.currentWave}): ${broccoliSpawns.length} Broccoli, ${carrotSpawns.length} Carrots`);
 
     broccoliSpawns.forEach(pos => {
-      this.npcEngine.spawnBroccoli(pos);
+      this.npcEngine.spawnBroccoli(pos, modifiers);
       logDebug(`[Game] Spawned Broccoli at {x: ${pos.x.toFixed(2)}, y: ${pos.y.toFixed(2)}, z: ${pos.z.toFixed(2)}}`);
     });
 
     carrotSpawns.forEach(pos => {
-      this.npcEngine.spawnCarrot(pos);
+      this.npcEngine.spawnCarrot(pos, modifiers);
       logDebug(`[Game] Spawned Carrot at {x: ${pos.x.toFixed(2)}, y: ${pos.y.toFixed(2)}, z: ${pos.z.toFixed(2)}}`);
     });
   }
@@ -511,6 +583,13 @@ class Game {
   fireProjectile() {
     if (this.ammo <= 0 && !CONFIG.player.infiniteAmmo) return;
 
+    // Find available projectile in the pool
+    const projectile = this.projectilePool.find(p => !p.active);
+    if (!projectile) {
+      logDebug(`[Game] Projectile pool exhausted. Cannot fire.`);
+      return;
+    }
+
     if (!CONFIG.player.infiniteAmmo) {
       this.ammo--;
       this.updateAmmoUI();
@@ -539,47 +618,18 @@ class Game {
       direction.z * speed
     );
 
-    const radius = 0.2;
-    const body = this.physicsWorld.createProjectileBody(launchPos, velocity, radius, false);
+    // Activate pooled projectile
+    projectile.active = true;
+    projectile.life = CONFIG.weapon.projectileLife;
+    projectile.direction.copy(direction);
 
-    // 3. Create visual potato wedge shape (Sphere scaled in Z direction)
-    const projGeo = new THREE.SphereGeometry(radius, 6, 6);
-    projGeo.scale(1, 1, 2.5); // Wedge scale
-    const projMat = new THREE.MeshStandardMaterial({
-      color: 0xfacc15, // Golden potato color
-      emissive: 0xca8a04,
-      emissiveIntensity: 0.4,
-      metalness: 0.1,
-      roughness: 0.8
-    });
-    const mesh = new THREE.Mesh(projGeo, projMat);
-    mesh.castShadow = true;
-    this.scene.add(mesh);
+    // Reset physics state
+    projectile.body.position.copy(launchPos);
+    projectile.body.velocity.copy(velocity);
+    projectile.body.angularVelocity.set(0, 0, 0);
+    projectile.body.wakeUp();
 
-    // Sync mesh with physics
-    this.physicsWorld.registerSync(mesh, body);
-
-    const projectile = { body, mesh, life: CONFIG.weapon.projectileLife };
-    this.projectiles.push(projectile);
-
-    // Collision listener on projectile
-    body.addEventListener('collide', (event) => {
-      const targetBody = event.body;
-      
-      // If hit NPC, deal damage
-      if (targetBody.npcInstance) {
-        const hitDirection = direction.clone();
-        targetBody.npcInstance.takeDamage(CONFIG.weapon.projectileDamage, mesh.position, hitDirection);
-      }
-
-      // Small hit splat particles (golden energy/mashed potato crumbs)
-      this.spawnImpactParticles(mesh.position, 0xfacc15);
-
-      // Instantly schedule removal
-      projectile.life = 0;
-    });
-
-    // 4. Trigger Spud Launcher recoil animation
+    // 3. Trigger Spud Launcher recoil animation
     this.recoilOffset = CONFIG.weapon.recoilOffset;
     this.recoilRotation = CONFIG.weapon.recoilRotation;
 
@@ -724,6 +774,9 @@ class Game {
 
     this.scoreText.innerText = String(this.score).padStart(5, '0');
     this.killsText.innerText = this.kills;
+    if (this.waveText) {
+      this.waveText.innerText = this.currentWave;
+    }
 
     // Live remaining enemies count — drives the wave-completion trigger visibility
     if (this.remainingText && this.npcEngine) {
@@ -875,6 +928,7 @@ class Game {
     this.wave = 1;
     this.ammo = CONFIG.weapon.maxAmmo;
     this.isGameOver = false;
+    this.currentWave = 0;
 
     this.jetpackFuel = CONFIG.player.jetpackFuelCapacity;
     this.stamina = CONFIG.player.staminaCapacity;
@@ -892,12 +946,15 @@ class Game {
     this.playerBody.position.set(0, resetY, 0);
     this.playerBody.velocity.set(0, 0, 0);
 
-    // Clear active projectiles
-    this.projectiles.forEach(p => {
-      this.physicsWorld.removeBody(p.body);
-      this.scene.remove(p.mesh);
+    // Clear active player projectiles
+    this.projectilePool.forEach(p => {
+      if (p.active) {
+        p.active = false;
+        p.body.position.set(0, -100, 0);
+        p.body.velocity.set(0, 0, 0);
+        p.body.angularVelocity.set(0, 0, 0);
+      }
     });
-    this.projectiles = [];
 
     this.npcProjectiles.forEach(p => {
       this.physicsWorld.removeBody(p.body);
@@ -970,16 +1027,18 @@ class Game {
       this.powerUpManager.update(deltaTime, this.yawObject.position);
     }
 
-    // 6. Update player projectiles
-    for (let i = this.projectiles.length - 1; i >= 0; i--) {
-      const p = this.projectiles[i];
+    // 6. Update pooled player projectiles
+    for (let i = 0; i < this.poolSize; i++) {
+      const p = this.projectilePool[i];
+      if (!p.active) continue;
+
       p.life -= deltaTime;
       if (p.life <= 0) {
-        this.physicsWorld.removeBody(p.body);
-        this.scene.remove(p.mesh);
-        p.mesh.geometry.dispose();
-        p.mesh.material.dispose();
-        this.projectiles.splice(i, 1);
+        p.active = false;
+        // Move hidden projectile out of bounds to avoid rogue collisions
+        p.body.position.set(0, -100, 0);
+        p.body.velocity.set(0, 0, 0);
+        p.body.angularVelocity.set(0, 0, 0);
       }
     }
 

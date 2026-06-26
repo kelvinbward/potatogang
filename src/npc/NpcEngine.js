@@ -15,7 +15,7 @@ export const NPC_STATES = {
 
 // Base NPC Class
 export class BaseNpc {
-  constructor(scene, physicsWorld, position, faction) {
+  constructor(scene, physicsWorld, position, faction, waveModifiers = null) {
     this.scene = scene;
     this.physicsWorld = physicsWorld;
     this.faction = faction;
@@ -28,6 +28,8 @@ export class BaseNpc {
     this.fireRate = 1.8; // Seconds between attacks
     this.lastFiredTime = 0;
     this.color = 0xffffff;
+
+    this.waveModifiers = waveModifiers;
 
     this.state = NPC_STATES.IDLE;
     this.spawnPoint = new THREE.Vector3(position.x, position.y, position.z);
@@ -44,8 +46,17 @@ export class BaseNpc {
     // Track previous state for damping transitions
     this._previousState = NPC_STATES.IDLE;
 
-    // Pre-allocated vector to avoid GC pressure in update loop
+    // Pre-allocated vectors to avoid GC pressure in hot update loops
     this._toPlayer = new THREE.Vector3();
+    this._jumpImpulse = new CANNON.Vec3();
+    this._boostForce = new CANNON.Vec3();
+    this._chaseForce = new CANNON.Vec3();
+    this._hoverForce = new CANNON.Vec3();
+    this._toSpawn = new CANNON.Vec3();
+    this._fireDir = new THREE.Vector3();
+
+    // Timer to temporarily bypass hover spring when jumping
+    this.hoverBypassTimer = 0;
   }
 
   takeDamage(amount, hitPoint, hitDirection) {
@@ -75,12 +86,11 @@ export class BaseNpc {
 
   flashRed() {
     this.mesh.traverse((child) => {
-      if (child.isMesh && child.material) {
-        const origColor = child.material.color.clone();
+      if (child.isMesh && child.material && child.userData.origColor !== undefined) {
         child.material.color.setHex(0xff3333);
         setTimeout(() => {
           if (child.material) {
-            child.material.color.copy(origColor);
+            child.material.color.setHex(child.userData.origColor);
           }
         }, 150);
       }
@@ -172,6 +182,11 @@ export class BaseNpc {
     // Sync mesh position with body (physics class handles standard sync, but we double-check)
     this.mesh.position.copy(this.body.position);
 
+    // Update hover bypass timer
+    if (this.hoverBypassTimer > 0) {
+      this.hoverBypassTimer -= deltaTime;
+    }
+
     // Handle linearDamping transitions between states
     if (this.state !== this._previousState) {
       logDebug(`[NpcEngine] ${this.faction} state transitioned from ${this._previousState} to ${this.state}`);
@@ -180,6 +195,16 @@ export class BaseNpc {
       } else {
         this.body.linearDamping = 0.6;  // Normal NPC damping
       }
+
+      // Update eye visuals
+      if (typeof this.setAngry === 'function') {
+        if (this.state === NPC_STATES.CHASE || this.state === NPC_STATES.ATTACK) {
+          this.setAngry(true);
+        } else if (this.state === NPC_STATES.IDLE) {
+          this.setAngry(false);
+        }
+      }
+
       this._previousState = this.state;
     }
 
@@ -207,7 +232,7 @@ export class BaseNpc {
 
       case NPC_STATES.CHASE:
         this.updateChase(deltaTime, this._toPlayer);
-        if (distanceToPlayer > this.chaseRange + 4) {
+        if (distanceToPlayer > this.chaseRange + 2) { // Tightened hysteresis
           this.state = NPC_STATES.IDLE;
         } else if (distanceToPlayer < this.attackRange) {
           this.state = NPC_STATES.ATTACK;
@@ -216,7 +241,7 @@ export class BaseNpc {
 
       case NPC_STATES.ATTACK:
         this.updateAttack(deltaTime, this._toPlayer, onNpcShoot);
-        if (distanceToPlayer > this.attackRange + 2) {
+        if (distanceToPlayer > this.attackRange + 1) { // Tightened hysteresis
           this.state = NPC_STATES.CHASE;
         }
         break;
@@ -228,16 +253,20 @@ export class BaseNpc {
     this._applyHoverForce();
     
     // Drag towards spawn point horizontally
-    const toSpawn = new CANNON.Vec3().copy(this.spawnPoint).vsub(this.body.position);
-    if (toSpawn.length() > 1.5) {
-      toSpawn.normalize();
-      this.body.applyForce(toSpawn.scale(8), this.body.position);
+    this._toSpawn.set(this.spawnPoint.x, this.spawnPoint.y, this.spawnPoint.z);
+    this._toSpawn.vsub(this.body.position, this._toSpawn);
+    if (this._toSpawn.length() > 1.5) {
+      this._toSpawn.normalize();
+      this._toSpawn.scale(8, this._toSpawn);
+      this.body.applyForce(this._toSpawn, this.body.position);
     }
   }
 
   // Applies a spring-like force to keep the NPC at its target hover height.
   // Counteracts gravity and corrects vertical drift proportionally.
   _applyHoverForce() {
+    if (this.hoverBypassTimer > 0) return; // Yield to jump/boost physics
+
     const npcMass = this.body.mass;
     const gravityForce = CONFIG.physics.gravity * npcMass;
     const heightError = this.targetHoverY - this.body.position.y;
@@ -249,21 +278,64 @@ export class BaseNpc {
     const correctionForce = heightError * springK * npcMass - this.body.velocity.y * dampingK * npcMass;
     
     // Total upward force: gravity compensation + spring correction
-    this.body.applyForce(new CANNON.Vec3(0, gravityForce + correctionForce, 0), this.body.position);
+    this._hoverForce.set(0, gravityForce + correctionForce, 0);
+    this.body.applyForce(this._hoverForce, this.body.position);
   }
 
   updateChase(deltaTime, toPlayer) {
-    // Maintain hover height via spring force
+    const heightDiff = toPlayer.y; // Player Y minus NPC Y (since toPlayer is player - npc)
+    const horizSpeed = Math.sqrt(this.body.velocity.x ** 2 + this.body.velocity.z ** 2);
+
+    // Jump & Boost logic
+    if (this.hoverBypassTimer <= 0) {
+      // If grounded (near target hover Y)
+      if (Math.abs(this.body.position.y - this.targetHoverY) < 0.5) {
+        // Jump if player is higher or if we are stuck (low horiz speed while trying to chase)
+        if (heightDiff > 1.5 || horizSpeed < 0.5) {
+          this._jumpImpulse.set(0, this.body.mass * 8, 0); // Need enough force to break gravity
+          this.body.applyImpulse(this._jumpImpulse, this.body.position);
+          this.hoverBypassTimer = 0.5; // Disable hover for 0.5s to allow jump
+        }
+      }
+    } else {
+      // Airborne & need to reach player: Jetpack Boost
+      if (heightDiff > 0.5 && this.body.position.y > this.targetHoverY + 0.5) {
+        // Apply upward thrust: using half of player jetpack thrust as default
+        // TODO: Tune this magnitude based on playtesting
+        const boostThrust = CONFIG.player.jetpackThrust * 0.5;
+        this._boostForce.set(0, boostThrust, 0);
+        this.body.applyForce(this._boostForce, this.body.position);
+        this.hoverBypassTimer = 0.2; // Keep hover disabled while boosting
+      }
+    }
+
+    // Maintain hover height via spring force (will skip if bypassing for jump)
     this._applyHoverForce();
 
-    // Drift towards player horizontally
-    const direction = toPlayer.clone().normalize();
-    const force = new CANNON.Vec3(
-      direction.x * this.speed * 12,
-      0, // Vertical handled by _applyHoverForce
-      direction.z * this.speed * 12
+    // Aggressive following logic: distance determines damping and speed multiplier
+    const distToPlayer = toPlayer.length();
+    let speedMultiplier = 12;
+    if (distToPlayer > 5 && distToPlayer < 15) {
+      // Rush the player
+      this.body.linearDamping = 0.2;
+      speedMultiplier = 20;
+    } else {
+      // Normal damping
+      this.body.linearDamping = 0.6;
+    }
+
+    // Drift towards player horizontally, reusing pre-allocated _chaseForce
+    this._chaseForce.set(toPlayer.x, 0, toPlayer.z);
+    if (this._chaseForce.length() > 0) {
+      this._chaseForce.normalize();
+    }
+
+    this._chaseForce.set(
+      this._chaseForce.x * this.speed * speedMultiplier,
+      0, // Vertical handled by _applyHoverForce or boost
+      this._chaseForce.z * this.speed * speedMultiplier
     );
-    this.body.applyForce(force, this.body.position);
+    this.body.applyForce(this._chaseForce, this.body.position);
   }
 
   updateAttack(deltaTime, toPlayer, onNpcShoot) {
@@ -275,26 +347,33 @@ export class BaseNpc {
     if (now - this.lastFiredTime > this.fireRate) {
       this.lastFiredTime = now;
       
-      const fireDir = toPlayer.clone().normalize();
+      this._fireDir.copy(toPlayer).normalize();
       // Add configurable vertical tilt to compensate for projectile gravity drop
-      fireDir.y += CONFIG.npc.projectileYBias;
-      fireDir.normalize();
+      this._fireDir.y += CONFIG.npc.projectileYBias;
+      this._fireDir.normalize();
 
-      onNpcShoot(this, fireDir);
+      onNpcShoot(this, this._fireDir);
     }
   }
 }
 
 // Broccoli Boy Subclass
 export class BroccoliBoy extends BaseNpc {
-  constructor(scene, physicsWorld, position) {
-    super(scene, physicsWorld, position, 'Broccoli');
-    this.health = 40;
+  constructor(scene, physicsWorld, position, waveModifiers) {
+    super(scene, physicsWorld, position, 'Broccoli', waveModifiers);
     this.maxHealth = 40;
     this.speed = 4.5;
     this.color = 0x22c55e; // Neon Green
     this.fireRate = 2.0;
     
+    if (this.waveModifiers) {
+      this.maxHealth *= this.waveModifiers.health;
+      this.speed *= this.waveModifiers.speed;
+      this.fireRate = this.waveModifiers.fireRate;
+    }
+
+    this.health = this.maxHealth;
+
     this.createVisuals();
     this.createPhysics(position);
   }
@@ -305,6 +384,33 @@ export class BroccoliBoy extends BaseNpc {
     this.mesh = createBroccoliModel();
     this.mesh.position.copy(this.spawnPoint);
     this.scene.add(this.mesh);
+  }
+
+  setAngry(isAngry) {
+    if (!this.mesh) return;
+
+    const leftEye = this.mesh.getObjectByName('leftEye');
+    const rightEye = this.mesh.getObjectByName('rightEye');
+    const leftBrow = this.mesh.getObjectByName('leftBrow');
+    const rightBrow = this.mesh.getObjectByName('rightBrow');
+
+    if (leftEye && rightEye && leftBrow && rightBrow) {
+      if (isAngry) {
+        // Change eyes to red
+        leftEye.material.color.setHex(0xff0000);
+        rightEye.material.color.setHex(0xff0000);
+        // Slant eyebrows downward
+        leftBrow.rotation.z = -0.2;
+        rightBrow.rotation.z = 0.2;
+      } else {
+        // Change eyes back to white
+        leftEye.material.color.setHex(0xffffff);
+        rightEye.material.color.setHex(0xffffff);
+        // Flatten eyebrows
+        leftBrow.rotation.z = 0;
+        rightBrow.rotation.z = 0;
+      }
+    }
   }
 
   createPhysics(position) {
@@ -319,15 +425,22 @@ export class BroccoliBoy extends BaseNpc {
 
 // Carrot Cartel Subclass
 export class CarrotCartel extends BaseNpc {
-  constructor(scene, physicsWorld, position) {
-    super(scene, physicsWorld, position, 'Carrot');
-    this.health = 50;
+  constructor(scene, physicsWorld, position, waveModifiers) {
+    super(scene, physicsWorld, position, 'Carrot', waveModifiers);
     this.maxHealth = 50;
     this.speed = 5.5;
     this.color = 0xf97316; // Neon Orange
     this.fireRate = 1.4; // Fasts shooters
     this.attackRange = 16; // Sniper distance
     
+    if (this.waveModifiers) {
+      this.maxHealth *= this.waveModifiers.health;
+      this.speed *= this.waveModifiers.speed;
+      this.fireRate = Math.max(0.1, this.fireRate - (2.0 - this.waveModifiers.fireRate)); // Relative scaling for faster base rate
+    }
+
+    this.health = this.maxHealth;
+
     this.createVisuals();
     this.createPhysics(position);
   }
@@ -358,14 +471,14 @@ export class NpcEngine {
     this.npcs = [];
   }
 
-  spawnBroccoli(position) {
-    const broccoli = new BroccoliBoy(this.scene, this.physicsWorld, position);
+  spawnBroccoli(position, waveModifiers = null) {
+    const broccoli = new BroccoliBoy(this.scene, this.physicsWorld, position, waveModifiers);
     this.npcs.push(broccoli);
     return broccoli;
   }
 
-  spawnCarrot(position) {
-    const carrot = new CarrotCartel(this.scene, this.physicsWorld, position);
+  spawnCarrot(position, waveModifiers = null) {
+    const carrot = new CarrotCartel(this.scene, this.physicsWorld, position, waveModifiers);
     this.npcs.push(carrot);
     return carrot;
   }

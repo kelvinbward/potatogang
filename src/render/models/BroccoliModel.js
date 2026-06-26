@@ -36,23 +36,61 @@ export function createBroccoliModel() {
   sphere3.scale.set(0.85, 0.85, 0.85);
   group.add(sphere3);
 
-  // --- Angry eyes ---
-  const eyeGeo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
-  const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+  // --- Face Group (Eyes and Eyebrows) ---
+  const faceGroup = new THREE.Group();
+  faceGroup.name = 'face';
+
+  // --- Eyes (Default state) ---
+  const eyeGeo = new THREE.BoxGeometry(0.1, 0.08, 0.08);
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const pupilGeo = new THREE.BoxGeometry(0.04, 0.04, 0.04);
+  const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
 
   const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
   leftEye.position.set(-0.25, 0.35, 0.45);
-  group.add(leftEye);
+  leftEye.name = 'leftEye';
+  faceGroup.add(leftEye);
+
+  const leftPupil = new THREE.Mesh(pupilGeo, pupilMat);
+  leftPupil.position.set(-0.25, 0.35, 0.49);
+  leftPupil.name = 'leftPupil';
+  faceGroup.add(leftPupil);
 
   const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
   rightEye.position.set(0.25, 0.35, 0.45);
-  group.add(rightEye);
+  rightEye.name = 'rightEye';
+  faceGroup.add(rightEye);
 
-  // Apply shadow properties to all child meshes
+  const rightPupil = new THREE.Mesh(pupilGeo, pupilMat);
+  rightPupil.position.set(0.25, 0.35, 0.49);
+  rightPupil.name = 'rightPupil';
+  faceGroup.add(rightPupil);
+
+  // --- Eyebrows (Default state) ---
+  const browGeo = new THREE.BoxGeometry(0.15, 0.03, 0.03);
+  const browMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+
+  const leftBrow = new THREE.Mesh(browGeo, browMat);
+  leftBrow.position.set(-0.25, 0.42, 0.47);
+  leftBrow.name = 'leftBrow';
+  faceGroup.add(leftBrow);
+
+  const rightBrow = new THREE.Mesh(browGeo, browMat);
+  rightBrow.position.set(0.25, 0.42, 0.47);
+  rightBrow.name = 'rightBrow';
+  faceGroup.add(rightBrow);
+
+  group.add(faceGroup);
+
+  // Apply shadow properties and cache original color for all child meshes
   group.traverse((child) => {
     if (child.isMesh) {
       child.castShadow = true;
       child.receiveShadow = true;
+
+      if (child.material && child.material.color) {
+        child.userData.origColor = child.material.color.getHex();
+      }
     }
   });
 

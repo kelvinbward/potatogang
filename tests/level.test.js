@@ -24,10 +24,15 @@ describe('BroccoliModel factory', () => {
     expect(group).toBeInstanceOf(THREE.Group);
   });
 
-  it('should contain at least 5 child meshes (stalk + 3 crown spheres + 2 eyes)', () => {
+  it('should contain at least 5 child meshes (stalk + 3 crown spheres + eyes/pupils/brows)', () => {
     const group = createBroccoliModel();
-    const meshChildren = group.children.filter(c => c.isMesh);
-    expect(meshChildren.length).toBeGreaterThanOrEqual(5);
+    let meshCount = 0;
+    group.traverse((child) => {
+      if (child.isMesh) {
+        meshCount++;
+      }
+    });
+    expect(meshCount).toBeGreaterThanOrEqual(5);
   });
 
   it('should have castShadow=true on all child meshes', () => {

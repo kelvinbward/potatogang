@@ -49,6 +49,12 @@ export const CONFIG = {
     // Upward bias added to NPC fire direction to compensate for projectile gravity drop.
     // Tunable from the debug panel.
     projectileYBias: 0.08,
+    // Scaling multipliers applied to enemies per wave
+    waveProgression: {
+      healthMultiplier: 1.2,
+      fireRateReduction: 0.1, // subtracts from base fire delay
+      speedMultiplier: 1.05
+    }
   },
   environment: {
     loadObstacles: false, // Retain obstacles in code, but do not load by default
