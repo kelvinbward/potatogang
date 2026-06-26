@@ -60,7 +60,20 @@ The spring adds corrective force proportional to deviation from `targetHoverY` a
 
 ---
 
-## 🧪 4. Testing Guidelines
+## 📈 4. Wave Scaling & Difficulty
+
+The game utilizes a wave-based progression system to scale difficulty dynamically. When the player clears the arena, `src/main.js` increments the `currentWave` counter and calculates compound multiplier objects (`waveModifiers`).
+
+These modifiers are passed down through the `NpcEngine` factory functions (`spawnBroccoli`, `spawnCarrot`) into the BaseNpc constructor:
+*   **Health:** Base health is multiplied by `waveProgression.healthMultiplier ^ (wave - 1)`.
+*   **Speed:** Base speed is multiplied by `waveProgression.speedMultiplier ^ (wave - 1)`.
+*   **Fire Rate:** Base firing delay is reduced by `waveProgression.fireRateReduction * (wave - 1)` (clamped to a minimum of 0.1s).
+
+This creates an exponential difficulty curve without requiring manual configuration of stats per wave.
+
+---
+
+## 🧪 5. Testing Guidelines
 
 ### Unit Tests
 *   Verify NPC initialization and stats in a test context.

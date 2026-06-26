@@ -46,3 +46,13 @@ This pattern was measured to provide a **~23% performance improvement** on raw c
 > References:
 > - Three.js Best Practices - Object creation: [threejs.org/docs/#manual/en/introduction/How-to-update-things](https://threejs.org/docs/#manual/en/introduction/How-to-update-things)
 > - Optimizing JavaScript game loops: [developer.mozilla.org](https://developer.mozilla.org/en-US/docs/Games/Techniques/Efficient_animation_for_web_games)
+
+### Object Pooling
+
+**Rule:** To maintain Zero-GC during active gameplay, utilize Object Pooling for frequently spawned entities like projectiles.
+
+**Solution:** Pre-allocate a fixed number of items in a pool during game initialization (e.g., `initProjectilePool`). Instead of instantiating or destroying `THREE.Mesh` and `CANNON.Body` objects mid-game, manipulate their state properties:
+
+- Make them "invisible" by moving them far out of bounds (e.g., `y: -100`) and zeroing their velocities.
+- Retrieve inactive items from the pool (`active = false`), reset their position/velocity/life, and mark them as `active = true` when required.
+- Do not call `.dispose()` or `removeBody()` during the main `animate` tick for pooled objects.

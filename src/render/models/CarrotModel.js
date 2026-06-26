@@ -71,11 +71,15 @@ export function createCarrotModel() {
   brow.rotation.z = 0.05;
   group.add(brow);
 
-  // Apply shadow properties to all child meshes
+  // Apply shadow properties and cache original color for all child meshes
   group.traverse((child) => {
     if (child.isMesh) {
       child.castShadow = true;
       child.receiveShadow = true;
+
+      if (child.material && child.material.color) {
+        child.userData.origColor = child.material.color.getHex();
+      }
     }
   });
 

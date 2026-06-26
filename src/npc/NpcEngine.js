@@ -15,7 +15,7 @@ export const NPC_STATES = {
 
 // Base NPC Class
 export class BaseNpc {
-  constructor(scene, physicsWorld, position, faction) {
+  constructor(scene, physicsWorld, position, faction, waveModifiers = null) {
     this.scene = scene;
     this.physicsWorld = physicsWorld;
     this.faction = faction;
@@ -28,6 +28,8 @@ export class BaseNpc {
     this.fireRate = 1.8; // Seconds between attacks
     this.lastFiredTime = 0;
     this.color = 0xffffff;
+
+    this.waveModifiers = waveModifiers;
 
     this.state = NPC_STATES.IDLE;
     this.spawnPoint = new THREE.Vector3(position.x, position.y, position.z);
@@ -84,12 +86,11 @@ export class BaseNpc {
 
   flashRed() {
     this.mesh.traverse((child) => {
-      if (child.isMesh && child.material) {
-        const origColor = child.material.color.clone();
+      if (child.isMesh && child.material && child.userData.origColor !== undefined) {
         child.material.color.setHex(0xff3333);
         setTimeout(() => {
           if (child.material) {
-            child.material.color.copy(origColor);
+            child.material.color.setHex(child.userData.origColor);
           }
         }, 150);
       }
@@ -358,14 +359,21 @@ export class BaseNpc {
 
 // Broccoli Boy Subclass
 export class BroccoliBoy extends BaseNpc {
-  constructor(scene, physicsWorld, position) {
-    super(scene, physicsWorld, position, 'Broccoli');
-    this.health = 40;
+  constructor(scene, physicsWorld, position, waveModifiers) {
+    super(scene, physicsWorld, position, 'Broccoli', waveModifiers);
     this.maxHealth = 40;
     this.speed = 4.5;
     this.color = 0x22c55e; // Neon Green
     this.fireRate = 2.0;
     
+    if (this.waveModifiers) {
+      this.maxHealth *= this.waveModifiers.health;
+      this.speed *= this.waveModifiers.speed;
+      this.fireRate = this.waveModifiers.fireRate;
+    }
+
+    this.health = this.maxHealth;
+
     this.createVisuals();
     this.createPhysics(position);
   }
@@ -417,15 +425,22 @@ export class BroccoliBoy extends BaseNpc {
 
 // Carrot Cartel Subclass
 export class CarrotCartel extends BaseNpc {
-  constructor(scene, physicsWorld, position) {
-    super(scene, physicsWorld, position, 'Carrot');
-    this.health = 50;
+  constructor(scene, physicsWorld, position, waveModifiers) {
+    super(scene, physicsWorld, position, 'Carrot', waveModifiers);
     this.maxHealth = 50;
     this.speed = 5.5;
     this.color = 0xf97316; // Neon Orange
     this.fireRate = 1.4; // Fasts shooters
     this.attackRange = 16; // Sniper distance
     
+    if (this.waveModifiers) {
+      this.maxHealth *= this.waveModifiers.health;
+      this.speed *= this.waveModifiers.speed;
+      this.fireRate = Math.max(0.1, this.fireRate - (2.0 - this.waveModifiers.fireRate)); // Relative scaling for faster base rate
+    }
+
+    this.health = this.maxHealth;
+
     this.createVisuals();
     this.createPhysics(position);
   }
@@ -456,14 +471,14 @@ export class NpcEngine {
     this.npcs = [];
   }
 
-  spawnBroccoli(position) {
-    const broccoli = new BroccoliBoy(this.scene, this.physicsWorld, position);
+  spawnBroccoli(position, waveModifiers = null) {
+    const broccoli = new BroccoliBoy(this.scene, this.physicsWorld, position, waveModifiers);
     this.npcs.push(broccoli);
     return broccoli;
   }
 
-  spawnCarrot(position) {
-    const carrot = new CarrotCartel(this.scene, this.physicsWorld, position);
+  spawnCarrot(position, waveModifiers = null) {
+    const carrot = new CarrotCartel(this.scene, this.physicsWorld, position, waveModifiers);
     this.npcs.push(carrot);
     return carrot;
   }
