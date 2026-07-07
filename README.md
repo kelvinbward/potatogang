@@ -155,9 +155,16 @@ Tests cover:
 - Scatter items cannot land inside fixed obstacle or player safe-zone footprints
 
 ### Performance Tests
-Run the Playwright performance benchmarks:
+The Playwright performance benchmarks are run locally via a Git `pre-push` hook. This approach warns you of potential performance regressions when pushing changes without blocking progress.
+
+You can also run them manually:
 ```bash
 npm run test:perf
+```
+
+If you wish to bypass the pre-push hook entirely when pushing code, you can use the `--no-verify` flag:
+```bash
+git push --no-verify
 ```
 
 These tests require Chromium and use the Chrome DevTools Protocol (CDP):
