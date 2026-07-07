@@ -12,5 +12,13 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
+  },
+  test: {
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/.{git,cache,output,temp}/**',
+      'tests/performance/**'
+    ]
   }
 });
