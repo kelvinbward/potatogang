@@ -80,7 +80,7 @@ Testing is mandatory and must be maintained alongside source code changes.
 * Tests must validate physics invariants, config constants, and spawn coordinate formulas.
 * Run `npm run test` to execute the Vitest unit suite before considering a task complete.
 * Run `npm run test:perf` to execute the Playwright performance suite (FPS baseline, spawner stress, memory leak detection).
-* Both suites run in CI and block deployment. See `docs/testing_strategy.md` for the full testing matrix.
+* Vitest runs in CI and blocks deployment. Performance tests run as a local `pre-push` git hook to warn of regressions without blocking progress. See `docs/testing_strategy.md` for the full testing matrix.
 
 ### 5.2 Functional Testing Instructions for Humans
 * When changes affect gameplay, include clear **manual verification steps** in the task walkthrough.
