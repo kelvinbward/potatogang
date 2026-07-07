@@ -13,8 +13,8 @@ export async function setupTestEnvironment(page) {
   // Navigate to base URL configured in playwright.config.js
   await page.goto('/potatogang/');
   
-  // Wait for the game instance to be initialized
-  await page.waitForFunction(() => window.gameInstance !== undefined, { timeout: 15000 });
+  // Wait for the game instance, its NPC engine, and gui debug panel to be fully initialized
+  await page.waitForFunction(() => window.gameInstance !== undefined && window.gameInstance.npcEngine !== null && window.gameInstance.gui !== undefined, { timeout: 15000 });
   
   // Force lock states and hide screen overlay
   await page.evaluate(() => {
