@@ -169,7 +169,8 @@ export class PhysicsWorld {
       position: new CANNON.Vec3(position.x, position.y, position.z),
       linearDamping: 0.6, // NPC drifts towards player
       angularDamping: 0.8,
-      fixedRotation: true
+      fixedRotation: true,
+      allowSleep: false // NPCs must always respond to steering forces; sleeping bodies ignore applyForce()
     });
 
     body.collisionFilterGroup = PhysicsWorld.GROUP_NPC;

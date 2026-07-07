@@ -21,7 +21,11 @@ NPCs use earth-gravity physics with **spring-force height maintenance** to stay 
   3. Damps vertical velocity to prevent oscillation.
 * **`targetHoverY`**: Set at spawn time to the NPC's initial Y position (ground level).
 * **Do not** use constant gravity multipliers (e.g., `gravityForce * 1.04`) as these cause cumulative drift.
-* **Do not** apply vertical chase forces. Horizontal movement only on XZ plane; vertical is handled by the hover spring.
+* **Do not** apply vertical chase forces under normal conditions. Horizontal movement only on XZ plane; vertical is handled by the hover spring.
+* **Exceptions to Vertical Movement (Jumping/Jetpack)**:
+  - NPCs are allowed to apply vertical impulses/forces to overcome obstacles or reach a high ground player during the CHASE state.
+  - When doing so, they **must** temporarily bypass the `_applyHoverForce()` spring. This is managed by `hoverBypassTimer`. If `hoverBypassTimer > 0`, `_applyHoverForce` returns early, yielding to jump/boost physics.
+  - Jump trigger threshold: `heightDiff > 2.0` (player Y minus NPC Y). **Do not** add a `horizSpeed`-based stuck-detection trigger; this was the root cause of the constant-jumping regression fixed in June 2026.
 
 ---
 
@@ -58,3 +62,13 @@ NPCs use a simple finite state machine: `IDLE → CHASE → ATTACK → DEAD`.
 * NPC fire direction includes a configurable upward bias: `CONFIG.npc.projectileYBias`.
 * This compensates for projectile gravity drop over distance.
 * The bias value is tunable from the debug panel — do not hardcode it.
+
+---
+
+## ⚠️ 6. Physics Update Order Invariant
+
+NPC forces (`applyForce`, `applyImpulse`) are applied inside `NpcEngine.update()`. The game loop **must** call `npcEngine.update()` **before** `physicsWorld.step()` on every frame.
+
+* The cannon-es force accumulator is cleared on every `world.step()`. Forces applied after the step are silently discarded, causing the NPC to produce no horizontal movement.
+* NPC bodies are created with `allowSleep: false`. A sleeping body ignores `applyForce()` entirely.
+* **Violation of this ordering is a critical regression.** This was the root cause of the "NPCs jump but don't move forward" bug discovered in June 2026.

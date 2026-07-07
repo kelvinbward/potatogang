@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
-import { PhysicsWorld } from '../physics/PhysicsWorld.js';
 import { CONFIG, logDebug } from '../config.js';
 import { createBroccoliModel } from '../render/models/BroccoliModel.js';
 import { createCarrotModel } from '../render/models/CarrotModel.js';
@@ -46,6 +45,20 @@ export class BaseNpc {
 
     // Pre-allocated vector to avoid GC pressure in update loop
     this._toPlayer = new THREE.Vector3();
+    this._jumpImpulse = new CANNON.Vec3();
+    this._boostForce = new CANNON.Vec3();
+    this._chaseForce = new CANNON.Vec3();
+    this._hoverForce = new CANNON.Vec3();
+    this._toSpawn = new CANNON.Vec3();
+    this._fireDir = new THREE.Vector3();
+
+    // Timer to temporarily bypass hover spring when jumping
+    this.hoverBypassTimer = 0;
+
+    // Diagnostic logging — throttled to ~2 Hz so the console stays readable.
+    // Tag each NPC instance with a short label for easy console filtering.
+    this._diagTimer = 0;
+    this._diagLabel = `[NPC:${faction.slice(0,3).toUpperCase()}@${position.x.toFixed(0)},${position.z.toFixed(0)}]`;
   }
 
   takeDamage(amount, hitPoint, hitDirection) {
@@ -166,8 +179,27 @@ export class BaseNpc {
     this.scene.remove(this.mesh);
   }
 
+  // Diagnostic logger — call from update() once per frame to throttle output.
+  _logDiag(deltaTime, distToPlayer) {
+    this._diagTimer -= deltaTime;
+    if (this._diagTimer > 0) return;
+    this._diagTimer = 0.5; // log every 0.5 s
+
+    const b = this.body;
+    const vel   = b ? `vel(${b.velocity.x.toFixed(2)}, ${b.velocity.y.toFixed(2)}, ${b.velocity.z.toFixed(2)})` : 'NO BODY';
+    const force = b ? `force(${b.force.x.toFixed(2)}, ${b.force.y.toFixed(2)}, ${b.force.z.toFixed(2)})` : '';
+    const sleep = b ? `sleepState=${b.sleepState}` : ''; // 0=AWAKE 1=SLEEPY 2=SLEEPING
+    const pos   = b ? `pos(${b.position.x.toFixed(2)}, ${b.position.y.toFixed(2)}, ${b.position.z.toFixed(2)})` : '';
+    const toP   = `toPlayer(${this._toPlayer.x.toFixed(2)}, ${this._toPlayer.y.toFixed(2)}, ${this._toPlayer.z.toFixed(2)})`;
+    const hb    = `hoverBypass=${this.hoverBypassTimer.toFixed(2)}`;
+    logDebug(`${this._diagLabel} state=${this.state} dist=${distToPlayer.toFixed(2)}m | ${pos} | ${vel} | ${force} | ${sleep} | ${toP} | ${hb}`);
+  }
+
   update(deltaTime, playerPos, onNpcShoot) {
     if (this.state === NPC_STATES.DEAD || !this.body) return;
+
+    // Decrement FSM hover bypass timer
+    this.hoverBypassTimer = Math.max(0, this.hoverBypassTimer - deltaTime);
 
     // Sync mesh position with body (physics class handles standard sync, but we double-check)
     this.mesh.position.copy(this.body.position);
@@ -191,7 +223,10 @@ export class BaseNpc {
 
     const distanceToPlayer = this.mesh.position.distanceTo(playerPos);
     this._toPlayer.subVectors(playerPos, this.mesh.position);
-    
+
+    // Throttled diagnostic log — reads body force, velocity, sleep state, and toPlayer vector.
+    this._logDiag(deltaTime, distanceToPlayer);
+
     // Turn towards player (yaw only)
     const yaw = Math.atan2(this._toPlayer.x, this._toPlayer.z);
     this.mesh.rotation.y = yaw;
@@ -228,7 +263,7 @@ export class BaseNpc {
     this._applyHoverForce();
     
     // Drag towards spawn point horizontally
-    const toSpawn = new CANNON.Vec3().copy(this.spawnPoint).vsub(this.body.position);
+    const toSpawn = this._toSpawn.copy(this.spawnPoint).vsub(this.body.position);
     if (toSpawn.length() > 1.5) {
       toSpawn.normalize();
       this.body.applyForce(toSpawn.scale(8), this.body.position);
@@ -238,6 +273,8 @@ export class BaseNpc {
   // Applies a spring-like force to keep the NPC at its target hover height.
   // Counteracts gravity and corrects vertical drift proportionally.
   _applyHoverForce() {
+    if (this.hoverBypassTimer > 0) return; // Skip hover correction if bypassed for jump/boost
+    
     const npcMass = this.body.mass;
     const gravityForce = CONFIG.physics.gravity * npcMass;
     const heightError = this.targetHoverY - this.body.position.y;
@@ -249,16 +286,41 @@ export class BaseNpc {
     const correctionForce = heightError * springK * npcMass - this.body.velocity.y * dampingK * npcMass;
     
     // Total upward force: gravity compensation + spring correction
-    this.body.applyForce(new CANNON.Vec3(0, gravityForce + correctionForce, 0), this.body.position);
+    this._hoverForce.set(0, gravityForce + correctionForce, 0);
+    this.body.applyForce(this._hoverForce, this.body.position);
   }
 
   updateChase(deltaTime, toPlayer) {
-    // Maintain hover height via spring force
+    const heightDiff = toPlayer.y; // Player Y minus NPC Y (since toPlayer is player - npc)
+
+    // Jump & Boost logic
+    if (this.hoverBypassTimer <= 0) {
+      // If grounded (near target hover Y)
+      if (Math.abs(this.body.position.y - this.targetHoverY) < 0.5) {
+          // Jump only when the player is significantly above the NPC.
+          if (heightDiff > 2.0) {
+            this._jumpImpulse.set(0, this.body.mass * 8, 0); // Need enough force to break gravity
+            this.body.applyImpulse(this._jumpImpulse, this.body.position);
+            this.hoverBypassTimer = 0.5; // Disable hover for 0.5s to allow jump
+          }
+      }
+    } else {
+      // Airborne & need to reach player: Jetpack Boost
+      if (heightDiff > 0.5 && this.body.position.y > this.targetHoverY + 0.5) {
+        const boostThrust = CONFIG.player.jetpackThrust * 0.5;
+        this._boostForce.set(0, boostThrust, 0);
+        this.body.applyForce(this._boostForce, this.body.position);
+        this.hoverBypassTimer = 0.2; // Keep hover disabled while boosting
+      }
+    }
+
+    // Maintain hover height via spring force (will skip if bypassing for jump)
     this._applyHoverForce();
 
     // Drift towards player horizontally
-    const direction = toPlayer.clone().normalize();
-    const force = new CANNON.Vec3(
+    const direction = this._fireDir.copy(toPlayer).normalize();
+    const force = this._chaseForce;
+    force.set(
       direction.x * this.speed * 12,
       0, // Vertical handled by _applyHoverForce
       direction.z * this.speed * 12
@@ -275,7 +337,7 @@ export class BaseNpc {
     if (now - this.lastFiredTime > this.fireRate) {
       this.lastFiredTime = now;
       
-      const fireDir = toPlayer.clone().normalize();
+      const fireDir = this._fireDir.copy(toPlayer).normalize();
       // Add configurable vertical tilt to compensate for projectile gravity drop
       fireDir.y += CONFIG.npc.projectileYBias;
       fireDir.normalize();

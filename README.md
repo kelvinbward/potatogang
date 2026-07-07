@@ -18,9 +18,9 @@ Navigate, seek cover behind giant soda cans/cereal boxes (which can be dynamical
 ## 🛠️ Tech Stack & Key Libraries
 
 *   **Build Tool**: [Vite (v8.0.16)](./vite.config.js) - ESM bundler and hot-reloading development server.
-*   **3D Renderer**: **Three.js (v0.184.0)** - Powers the environment, custom weapon model, particle splatters, exponential fog, and cyberpunk neon lighting.
+*   **3D Renderer**: **Three.js (v0.185.1)** - Powers the environment, custom weapon model, particle splatters, exponential fog, and cyberpunk neon lighting.
 *   **Physics Engine**: **Cannon-es (v0.20.0)** - Handles rigid body simulation with Earth-standard gravity (`9.8 m/s²`). All character movement is force-based through the physics engine.
-*   **Testing Suite**: **Vitest (v4.1.9)** - Modern unit-testing framework for config invariants and physics body creation validations.
+*   **Testing Suite**: **Vitest (v4.1.9)** - Unit tests for config invariants, physics body creation, and spawn coordinate math. **Playwright (v1.61.1)** - Performance benchmarks (FPS baseline, spawner stress, memory leak detection) via Chrome DevTools Protocol.
 *   **HUD & Styling**: **Vanilla HTML & CSS** - Features a responsive glassmorphic neon overlay HUD with animated health, stamina, jetpack boost, and ammunition bars.
 
 ---
@@ -58,9 +58,13 @@ Navigate, seek cover behind giant soda cans/cereal boxes (which can be dynamical
 | | `src/npc/AGENTS.md` | NPC-specific agent rules (spawn, hover, FSM, lifecycle). |
 | **Rendering** | `src/render/models/` | Procedural 3D Three.js mesh generation (No external GLTF assets). |
 | **Testing** | `tests/` | Vitest suites spanning physics, loading, components. |
-| **Documentation** | `docs/performance.md` | In-depth technical review of GC optimization methods. |
+| | `tests/performance/` | Playwright performance benchmarks (FPS, spawner stress, memory). |
+| | `playwright.config.js` | Playwright configuration (Chromium, GPU flags, timeouts). |
+| **Documentation** | `docs/design/performance.md` | In-depth technical review of GC optimization methods. |
+| | `docs/testing_strategy.md` | Testing strategy matrix (Logic, E2E, Performance tiers). |
 | | `AGENTS.md` | Human-in-the-loop and coding conventions for autonomous agents. |
 | **Build & Deploy** | `vite.config.js` | Development and bundle tooling. |
+| | `.github/workflows/deploy.yml` | CI/CD pipeline (tests gate deployment to GitHub Pages). |
 | | `Dockerfile.dev`, `docker-compose.yml` | Sandboxed execution environments. |
 
 ---
@@ -149,6 +153,19 @@ Tests cover:
 - Material singleton caching (SodaCanModel, CerealBoxModel)
 - AABB exclusion zone logic (`_buildExclusionZones`, `_overlapsAnyZone`)
 - Scatter items cannot land inside fixed obstacle or player safe-zone footprints
+
+### Performance Tests
+Run the Playwright performance benchmarks:
+```bash
+npm run test:perf
+```
+
+These tests require Chromium and use the Chrome DevTools Protocol (CDP):
+- **FPS Baseline**: Measures average framerate over 10 seconds of camera rotation and player movement. Asserts ≥55 FPS (GPU) or ≥12 FPS (software renderer).
+- **Spawner Stress**: Spawns 50 simultaneous NPCs and measures framerate under heavy FSM load. Asserts ≥45 FPS (GPU) or ≥8 FPS (software renderer).
+- **Memory Leak Detection**: Fires 1,000 projectiles after a JIT warmup phase, forces GC, and asserts heap growth stays within 10%.
+
+See [docs/testing_strategy.md](./docs/testing_strategy.md) for the full testing strategy matrix.
 
 ### Manual Functional Tests
 1. **Start game** → Player should be standing on the deck, not falling.

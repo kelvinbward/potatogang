@@ -764,6 +764,10 @@ class Game {
 
   async submitHighScore() {
     if (!this.playerNameInput || !this.submitScoreBtn) return;
+    if (!supabase) {
+      console.warn('Supabase not configured. Score submission disabled.');
+      return;
+    }
 
     const playerName = this.playerNameInput.value.trim();
     if (!playerName || playerName.length > 15) return;
@@ -791,7 +795,6 @@ class Game {
 
   async fetchLeaderboard() {
     if (!this.leaderboardList) return;
-
     if (!supabase) {
       const errorLi = document.createElement('li');
       errorLi.textContent = 'Leaderboard unavailable (configuration missing)';
@@ -939,36 +942,39 @@ class Game {
       this.updateAmmoUI();
     }
 
-    // 2. Physics stepping
+    // 2. Accumulate forces from all game systems BEFORE the physics step.
+    //    cannon-es clears the force accumulator every world.step(), so forces
+    //    applied after the step are silently discarded. Player movement, NPC AI,
+    //    and power-up logic all call applyForce/applyImpulse and must run here.
     if (!this.isGameOver && this.isLocked) {
-      this.physicsWorld.step(deltaTime);
       this.updatePlayerMovement(deltaTime);
+
+      this.npcEngine.update(
+        deltaTime,
+        this.yawObject.position,
+        (npc, direction) => this.onNpcShoot(npc, direction)
+      );
+
+      if (this.powerUpManager) {
+        this.powerUpManager.update(deltaTime, this.yawObject.position);
+      }
     }
 
-    // 3. Sync player mesh rig with player physics body position
+    // 3. Step the physics world — consumes all accumulated forces from step 2.
+    if (!this.isGameOver && this.isLocked) {
+      this.physicsWorld.step(deltaTime);
+    }
+
+    // 4. Sync player mesh rig with player physics body position
     this.yawObject.position.copy(this.playerBody.position);
 
-    // 4. Update Weapon recoil animations
+    // 5. Update Weapon recoil animations
     this.recoilOffset = THREE.MathUtils.lerp(this.recoilOffset, 0, CONFIG.weapon.recoilDecay * deltaTime);
     this.recoilRotation = THREE.MathUtils.lerp(this.recoilRotation, 0, CONFIG.weapon.recoilDecay * deltaTime);
     
     // Animate weapon positioning offset
     this.weaponGroup.position.z = this.recoilOffset;
     this.weaponGroup.rotation.x = this.recoilRotation;
-
-    // 5. Update NPC engines
-    if (!this.isGameOver && this.isLocked) {
-      this.npcEngine.update(
-        deltaTime,
-        this.yawObject.position,
-        (npc, direction) => this.onNpcShoot(npc, direction)
-      );
-    }
-
-    // 5b. Update Power-up manager
-    if (!this.isGameOver && this.isLocked && this.powerUpManager) {
-      this.powerUpManager.update(deltaTime, this.yawObject.position);
-    }
 
     // 6. Update player projectiles
     for (let i = this.projectiles.length - 1; i >= 0; i--) {

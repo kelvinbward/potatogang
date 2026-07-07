@@ -6,8 +6,8 @@ This document establishes strict, invariant engineering rules for all current an
 
 ## 🛠️ 1. System Stack Constraints
 The project stack is locked to:
-* **Bundler & Dev Server**: Vite (v8.0.16) running in standard ESM mode.
-* **3D Renderer**: Vanilla Three.js (v0.184.0) with standard lighting and shadow map configuration.
+* **Bundler & Dev Server**: Vite (v8.1.3) running in standard ESM mode.
+* **3D Renderer**: Vanilla Three.js (v0.185.1) with standard lighting and shadow map configuration.
 * **Physics Engine**: Cannon-es (v0.20.0). No other external physics engine may be introduced.
 
 ---
@@ -78,7 +78,9 @@ Testing is mandatory and must be maintained alongside source code changes.
 ### 5.1 Automated Tests
 * All code changes must include or update automated tests (`tests/` directory).
 * Tests must validate physics invariants, config constants, and spawn coordinate formulas.
-* Run `npm run test` to execute the full suite before considering a task complete.
+* Run `npm run test` to execute the Vitest unit suite before considering a task complete.
+* Run `npm run test:perf` to execute the Playwright performance suite (FPS baseline, spawner stress, memory leak detection).
+* Both suites run in CI and block deployment. See `docs/testing_strategy.md` for the full testing matrix.
 
 ### 5.2 Functional Testing Instructions for Humans
 * When changes affect gameplay, include clear **manual verification steps** in the task walkthrough.
@@ -99,5 +101,5 @@ To minimize context and maintain developer focus, folder-specific rules are deco
 ## 🚀 7. Performance & Optimization Rules
 * **Zero GC Hot Paths**: Never instantiate objects (`new THREE.Vector3()`, `new CANNON.Vec3()`, etc.) inside `update()`, `render()`, or physics tick loops. This generates garbage collection stutter.
   - **Pattern**: Pre-allocate required vectors/quaternions as class properties in the constructor (e.g., `this._moveDirection = new THREE.Vector3()`) and mutate them in-place using `.set()`, `.copy()`, or `.applyAxisAngle()`.
-  - Reference: See `docs/performance.md` for benchmarks and examples.
+  - Reference: See `docs/design/performance.md` for benchmarks and examples.
 * **File Naming Best Practices**: When creating files (e.g. for benchmarks, tests, or scripts), give them meaningful, non-generic names (e.g. `performance_related_object` instead of `benchmark2.js`) to avoid overlaps and improve clarity.
