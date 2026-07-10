@@ -92,8 +92,40 @@ class Game {
     this.submitScoreBtn = document.getElementById('submit-score-btn');
     this.leaderboardList = document.getElementById('leaderboard-list');
 
+    // Main Menu References
+    this.playBtn = document.getElementById('play-btn');
+    this.showLeaderboardBtn = document.getElementById('show-leaderboard-btn');
+    this.backToMenuBtn = document.getElementById('back-to-menu-btn');
+    this.mainMenuLeaderboardContainer = document.getElementById('main-menu-leaderboard-container');
+    this.mainMenuLeaderboardList = document.getElementById('main-menu-leaderboard-list');
+    this.instructionsContent = document.getElementById('instructions-content');
+
     if (this.submitScoreBtn) {
       this.submitScoreBtn.addEventListener('click', () => this.submitHighScore());
+    }
+
+    if (this.showLeaderboardBtn) {
+      this.showLeaderboardBtn.addEventListener('click', () => {
+        this.instructionsContent.classList.add('hidden');
+        this.playBtn.classList.add('hidden');
+        this.showLeaderboardBtn.classList.add('hidden');
+
+        this.mainMenuLeaderboardContainer.classList.remove('hidden');
+        this.backToMenuBtn.classList.remove('hidden');
+
+        this.fetchLeaderboard(this.mainMenuLeaderboardList);
+      });
+    }
+
+    if (this.backToMenuBtn) {
+      this.backToMenuBtn.addEventListener('click', () => {
+        this.mainMenuLeaderboardContainer.classList.add('hidden');
+        this.backToMenuBtn.classList.add('hidden');
+
+        this.instructionsContent.classList.remove('hidden');
+        this.playBtn.classList.remove('hidden');
+        this.showLeaderboardBtn.classList.remove('hidden');
+      });
     }
 
     this.jetpackBar = document.getElementById('jetpack-bar');
@@ -316,10 +348,13 @@ class Game {
   }
 
   setupControls() {
-    // Click blocker to request pointer lock on document.body for cross-browser reliability
-    this.blocker.addEventListener('click', () => {
-      document.body.requestPointerLock();
-    });
+    // Click play button to request pointer lock on document.body for cross-browser reliability
+    if (this.playBtn) {
+      this.playBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // prevent other clicks from interfering
+        document.body.requestPointerLock();
+      });
+    }
 
     document.addEventListener('pointerlockchange', () => {
       if (document.pointerLockElement === document.body) {
@@ -793,19 +828,19 @@ class Game {
     }
   }
 
-  async fetchLeaderboard() {
-    if (!this.leaderboardList) return;
+  async fetchLeaderboard(targetListElement = this.leaderboardList) {
+    if (!targetListElement) return;
     if (!supabase) {
       const errorLi = document.createElement('li');
       errorLi.textContent = 'Leaderboard unavailable (configuration missing)';
       errorLi.style.color = 'var(--text-secondary)';
-      this.leaderboardList.replaceChildren(errorLi);
+      targetListElement.replaceChildren(errorLi);
       return;
     }
 
     const loadingLi = document.createElement('li');
     loadingLi.textContent = 'Loading...';
-    this.leaderboardList.replaceChildren(loadingLi);
+    targetListElement.replaceChildren(loadingLi);
 
     const { data, error } = await supabase
       .from('high_scores')
@@ -818,11 +853,11 @@ class Game {
       const errorLi = document.createElement('li');
       errorLi.textContent = 'Error loading scores';
       errorLi.style.color = 'red';
-      this.leaderboardList.replaceChildren(errorLi);
+      targetListElement.replaceChildren(errorLi);
       return;
     }
 
-    this.leaderboardList.replaceChildren();
+    targetListElement.replaceChildren();
 
     if (data && data.length > 0) {
       data.forEach((entry, index) => {
@@ -841,12 +876,12 @@ class Game {
 
         li.appendChild(rankName);
         li.appendChild(scoreSpan);
-        this.leaderboardList.appendChild(li);
+        targetListElement.appendChild(li);
       });
     } else {
       const emptyLi = document.createElement('li');
       emptyLi.textContent = 'No scores yet!';
-      this.leaderboardList.replaceChildren(emptyLi);
+      targetListElement.replaceChildren(emptyLi);
     }
   }
 

@@ -68,29 +68,44 @@
         <div id="instructions" class="glass">
             <h1 class="game-title">POTATO GANG</h1>
             <p class="game-subtitle">HIGH-OCTANE TACTICAL KITCHEN ARENA</p>
-            <div class="instructions-grid">
-                <div class="instruction-item">
-                    <span class="key">WASD</span>
-                    <span class="desc">Walk / Run (Grounded)</span>
+
+            <div id="instructions-content">
+                <div class="instructions-grid">
+                    <div class="instruction-item">
+                        <span class="key">WASD</span>
+                        <span class="desc">Walk / Run (Grounded)</span>
+                    </div>
+                    <div class="instruction-item">
+                        <span class="key">SPACE</span>
+                        <span class="desc">Jump / Hold for Jetpack Boost</span>
+                    </div>
+                    <div class="instruction-item">
+                        <span class="key">SHIFT</span>
+                        <span class="desc">Sprint (Drains Stamina)</span>
+                    </div>
+                    <div class="instruction-item">
+                        <span class="key">CLICK</span>
+                        <span class="desc">Shoot Spuds</span>
+                    </div>
                 </div>
-                <div class="instruction-item">
-                    <span class="key">SPACE</span>
-                    <span class="desc">Jump / Hold for Jetpack Boost</span>
-                </div>
-                <div class="instruction-item">
-                    <span class="key">SHIFT</span>
-                    <span class="desc">Sprint (Drains Stamina)</span>
-                </div>
-                <div class="instruction-item">
-                    <span class="key">CLICK</span>
-                    <span class="desc">Shoot Spuds</span>
+                <div class="faction-info">
+                    <span>Threats: </span>
+                    <span class="broccoli-tag">Broccoli Boys</span> &
+                    <span class="carrot-tag">Carrot Cartel</span>
                 </div>
             </div>
-            <p class="click-to-play">CLICK TO ENTER THE KITCHEN ARENA</p>
-            <div class="faction-info">
-                <span>Threats: </span>
-                <span class="broccoli-tag">Broccoli Boys</span> & 
-                <span class="carrot-tag">Carrot Cartel</span>
+
+            <div id="main-menu-leaderboard-container" class="hidden" style="margin-bottom: 20px; text-align: left; background: rgba(0,0,0,0.3); border: 1px solid var(--neon-green); border-radius: 8px; padding: 10px;">
+                <h3 style="color: var(--neon-green); margin-bottom: 10px; text-align: center;" class="monospace">TOP SPUDS</h3>
+                <ul id="main-menu-leaderboard-list" class="monospace" style="list-style-type: none; padding: 0; margin: 0; font-size: 0.9rem; max-height: 150px; overflow-y: auto;">
+                    <!-- Scores dynamically inserted here -->
+                </ul>
+            </div>
+
+            <div class="main-menu-actions" style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+                <button id="play-btn" class="btn" style="padding: 10px 20px; font-size: 1rem;">PLAY</button>
+                <button id="show-leaderboard-btn" class="btn" style="padding: 10px 20px; font-size: 1rem;">LEADERBOARD</button>
+                <button id="back-to-menu-btn" class="btn hidden" style="padding: 10px 20px; font-size: 1rem;">BACK</button>
             </div>
         </div>
     </div>
