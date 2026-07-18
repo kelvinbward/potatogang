@@ -12,7 +12,7 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.110.0",
+    "@supabase/supabase-js": "^2.110.7",
     "cannon-es": "^0.20.0",
     "three": "^0.185.1"
   },
