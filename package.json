@@ -17,7 +17,7 @@
     "three": "^0.185.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1",
+    "@playwright/test": "^1.62.0",
     "@types/three": "^0.184.1",
     "husky": "^9.1.7",
     "lil-gui": "^0.21.0",
